@@ -19,8 +19,15 @@ export const CategoryManager = () => {
   const [subInputMap, setSubInputMap] = useState({});
 
   useEffect(() => {
-    setCategories(categoryStore.getAll());
-    const unsub = categoryStore.subscribe((updated) => setCategories(updated));
+    const load = async () => {
+      try {
+        setCategories(await categoryStore.getAll());
+      } catch (err) {
+        triggerNotice('Could not load categories: ' + err.message, 'error');
+      }
+    };
+    load();
+    const unsub = categoryStore.subscribe((updated) => setCategories(updated || []));
     return unsub;
   }, []);
 
@@ -29,12 +36,12 @@ export const CategoryManager = () => {
     setTimeout(() => setNotice(null), 3500);
   };
 
-  const handleAddCategory = (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
 
     try {
-      categoryStore.addCategory({
+      await categoryStore.addCategory({
         name: newCatName.trim(),
         type: activeType,
         description: newCatDesc.trim()
@@ -48,26 +55,36 @@ export const CategoryManager = () => {
     }
   };
 
-  const handleDeleteCategory = (catId, catName) => {
-    if (window.confirm(`Are you sure you want to delete category "${catName}" and its subcategories?`)) {
-      categoryStore.deleteCategory(catId);
+  const handleDeleteCategory = async (catId, catName) => {
+    if (!window.confirm(`Are you sure you want to delete category "${catName}" and its subcategories?`)) return;
+    try {
+      await categoryStore.deleteCategory(catId);
       triggerNotice(`Category "${catName}" deleted.`);
+    } catch (err) {
+      triggerNotice('Failed to delete category: ' + err.message, 'error');
     }
   };
 
-  const handleAddSubcategory = (catId) => {
+  const handleAddSubcategory = async (catId) => {
     const subName = subInputMap[catId]?.trim();
     if (!subName) return;
 
-    categoryStore.addSubcategory(catId, subName);
-    setSubInputMap(prev => ({ ...prev, [catId]: '' }));
-    triggerNotice(`Added subcategory "${subName}"!`);
+    try {
+      await categoryStore.addSubcategory(catId, subName);
+      setSubInputMap(prev => ({ ...prev, [catId]: '' }));
+      triggerNotice(`Added subcategory "${subName}"!`);
+    } catch (err) {
+      triggerNotice('Failed to add subcategory: ' + err.message, 'error');
+    }
   };
 
-  const handleDeleteSubcategory = (catId, subName) => {
-    if (window.confirm(`Remove subcategory "${subName}"?`)) {
-      categoryStore.deleteSubcategory(catId, subName);
+  const handleDeleteSubcategory = async (catId, subName, subSlug) => {
+    if (!window.confirm(`Remove subcategory "${subName}"?`)) return;
+    try {
+      await categoryStore.deleteSubcategory(catId, subSlug);
       triggerNotice(`Subcategory "${subName}" removed.`);
+    } catch (err) {
+      triggerNotice('Failed to remove subcategory: ' + err.message, 'error');
     }
   };
 
@@ -265,14 +282,14 @@ export const CategoryManager = () => {
 
                 {/* Subcategory Pills */}
                 <div className="flex flex-wrap items-center gap-2">
-                  {(cat.subcategories || []).map((sub, idx) => (
+                  {(cat.subcategory_objects || []).map((sub) => (
                     <span
-                      key={idx}
+                      key={sub.slug || sub.id}
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-100 text-xs font-medium text-gray-800 border border-gray-200"
                     >
-                      <span>{sub}</span>
+                      <span>{sub.name}</span>
                       <button
-                        onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                        onClick={() => handleDeleteSubcategory(cat.id, sub.name, sub.slug)}
                         className="text-gray-400 hover:text-rose-600 p-0.5 rounded"
                         title="Remove Subcategory"
                       >

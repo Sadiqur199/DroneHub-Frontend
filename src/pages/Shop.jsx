@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { productStore } from '../services/productStore';
+import { session } from '../services/api';
 import { ShopProductCard } from '../Components/product/ShopProductCard';
 import { CategoryExcelManager } from '../Components/admin/CategoryExcelManager';
 import {
@@ -34,23 +35,32 @@ export const Shop = ({
 
   // Load products & subscribe to changes
   useEffect(() => {
-    const loaded = productStore.getAll();
-    setProducts(loaded);
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const loaded = await productStore.getAll();
+        if (!cancelled) setProducts(loaded);
+      } catch (err) {
+        console.error('Failed to load catalogue:', err);
+      }
+    };
+
+    load();
 
     const unsub = productStore.subscribe((updated) => {
-      setProducts(updated);
+      setProducts(updated || []);
     });
-    return unsub;
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
-  // Check if admin user is logged in
+  // Admin tools & the signed-in customer's tier come from the session.
   useEffect(() => {
-    try {
-      const user = localStorage.getItem('dh_user');
-      if (user) {
-        setIsAdminMode(true);
-      }
-    } catch (e) {}
+    setIsAdminMode(session.isAdmin());
+    setActiveUserRole(session.getRole());
   }, []);
 
   // When category changes, reset subcategory and page to 1
@@ -70,11 +80,16 @@ export const Shop = ({
     setCurrentPage(1);
   }, [searchQuery, sortBy, inStockOnly, priceRange]);
 
-  // Handle single product delete
-  const handleDeleteProduct = (id) => {
+  // Handle single product delete (admin only)
+  const handleDeleteProduct = async (id) => {
     const target = products.find(p => p.id === id);
-    productStore.delete(id);
-    setDeleteToast(`Deleted "${target?.name || 'Product'}"`);
+    if (!window.confirm(`Delete "${target?.name || 'Product'}"?`)) return;
+    try {
+      await productStore.delete(id);
+      setDeleteToast(`Deleted "${target?.name || 'Product'}"`);
+    } catch (err) {
+      setDeleteToast(`Delete failed: ${err.message}`);
+    }
     setTimeout(() => setDeleteToast(null), 3000);
   };
 
@@ -115,6 +130,14 @@ export const Shop = ({
 
   const [activeUserRole, setActiveUserRole] = useState('all'); // 'all', 'normal', 'wholesale', 'agent'
 
+  // The price a customer actually pays for a product.
+  const effectivePriceFor = (p) => {
+    if (activeUserRole === 'wholesale' && p.role_prices?.wholesale) return p.role_prices.wholesale;
+    if (activeUserRole === 'agent' && p.role_prices?.agent) return p.role_prices.agent;
+    if (activeUserRole === 'normal' && p.role_prices?.normal != null) return p.role_prices.normal;
+    return p.price_cents || 0;
+  };
+
   // Filtered & Sorted Products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -154,14 +177,8 @@ export const Shop = ({
         return false;
       }
 
-      // 5. Price range filter
-      const effectivePrice = activeUserRole === 'wholesale' && p.role_prices?.wholesale
-        ? p.role_prices.wholesale
-        : activeUserRole === 'agent' && p.role_prices?.agent
-        ? p.role_prices.agent
-        : (p.sale_price_cents || p.price_cents || 0);
-
-      const priceAud = effectivePrice / 100;
+      // 5. Price range filter (uses the price this customer actually pays)
+      const priceAud = effectivePriceFor(p) / 100;
       if (priceRange === 'under500' && priceAud >= 500) return false;
       if (priceRange === '500-2k' && (priceAud < 500 || priceAud > 2000)) return false;
       if (priceRange === '2k-10k' && (priceAud < 2000 || priceAud > 10000)) return false;
@@ -169,11 +186,7 @@ export const Shop = ({
 
       return true;
     }).sort((a, b) => {
-      const getPrice = (item) => {
-        if (activeUserRole === 'wholesale' && item.role_prices?.wholesale) return item.role_prices.wholesale;
-        if (activeUserRole === 'agent' && item.role_prices?.agent) return item.role_prices.agent;
-        return item.sale_price_cents || item.price_cents || 0;
-      };
+      const getPrice = (item) => effectivePriceFor(item);
 
       if (sortBy === 'price-low') {
         return getPrice(a) - getPrice(b);
@@ -243,28 +256,30 @@ export const Shop = ({
             </div>
 
             {/* Admin Excel & Control Bar */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setShowExcelModal(true)}
-                className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 border border-cyan-400/40"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Admin Excel Upload & Demo Export</span>
-              </button>
+            {isAdminMode && (
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => setShowExcelModal(true)}
+                  className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 border border-cyan-400/40"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Admin Excel Upload & Demo Export</span>
+                </button>
 
-              <button
-                onClick={() => setIsAdminMode(!isAdminMode)}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                  isAdminMode
-                    ? 'bg-rose-950/60 border-rose-600 text-rose-300'
-                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
-                }`}
-                title="Toggle delete action on product cards"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>{isAdminMode ? 'Delete Mode: Active' : 'Admin Quick Delete'}</span>
-              </button>
-            </div>
+                <button
+                  onClick={() => setIsAdminMode(!isAdminMode)}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    isAdminMode
+                      ? 'bg-rose-950/60 border-rose-600 text-rose-300'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Toggle delete action on product cards"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Admin Quick Delete</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Quick Search and Mobile Filter Toggle */}
@@ -300,30 +315,43 @@ export const Shop = ({
 
           {/* User Tier & Pricing Mode Selector */}
           <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
-              Viewing As:
-            </span>
-            {[
-              { id: 'all', label: 'Full Catalog (All Tiers)' },
-              { id: 'normal', label: 'Retail Customer' },
-              { id: 'wholesale', label: 'Wholesale Dealer (ABN)' },
-              { id: 'agent', label: 'Service Partner Agent' },
-            ].map((tier) => (
-              <button
-                key={tier.id}
-                onClick={() => {
-                  setActiveUserRole(tier.id);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs transition-all font-semibold ${
-                  activeUserRole === tier.id
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80'
-                }`}
-              >
-                {tier.label}
-              </button>
-            ))}
+            {isAdminMode ? (
+              <>
+                <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
+                  Admin Preview:
+                </span>
+                {[
+                  { id: 'all', label: 'Full Catalog (All Tiers)' },
+                  { id: 'normal', label: 'Retail Customer' },
+                  { id: 'wholesale', label: 'Wholesale Dealer (ABN)' },
+                  { id: 'agent', label: 'Service Partner Agent' },
+                ].map((tier) => (
+                  <button
+                    key={tier.id}
+                    onClick={() => {
+                      setActiveUserRole(tier.id);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs transition-all font-semibold ${
+                      activeUserRole === tier.id
+                        ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80'
+                    }`}
+                  >
+                    {tier.label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <span className="px-3 py-1 rounded-lg bg-slate-900/80 border border-slate-700/80 text-slate-300 font-semibold">
+                {activeUserRole === 'wholesale'
+                  ? 'Wholesale (ABN) pricing applied'
+                  : activeUserRole === 'agent'
+                  ? 'Service Agent pricing applied'
+                  : 'Retail pricing applied'}
+                {!session.isLoggedIn() && ' — sign in for your account pricing'}
+              </span>
+            )}
           </div>
         </div>
       </section>

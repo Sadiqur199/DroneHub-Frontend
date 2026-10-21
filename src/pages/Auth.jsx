@@ -37,44 +37,28 @@ export const Auth = ({ onNavigate }) => {
       });
 
       if (res && res.success) {
-        localStorage.setItem('dh_token', res.token);
-        localStorage.setItem('dh_user', JSON.stringify(res.user));
         setSuccessMessage(`Welcome back, ${res.user.name}!`);
 
         setTimeout(() => {
           if (res.user.is_admin) {
             onNavigate('admin');
           } else {
-            onNavigate('home');
+            onNavigate('account');
           }
         }, 800);
         return;
       }
+
+      setErrorMessage(res?.message || 'Invalid email or password.');
     } catch (err) {
-      console.warn('Backend authentication API offline, checking local demo admin:', err);
-    }
-
-    // Demo Admin & Wholesale fallback when backend server is offline
-    if (form.email.toLowerCase().includes('admin') || form.password === 'Admin123!Secure') {
-      const adminUser = {
-        id: 1,
-        name: 'Super Admin (Mackay HQ)',
-        email: form.email || 'admin@dronehub.com.au',
-        role: 'admin',
-        is_admin: true,
-      };
-      localStorage.setItem('dh_token', 'demo-admin-token-123');
-      localStorage.setItem('dh_user', JSON.stringify(adminUser));
-      setSuccessMessage('Welcome back, Super Admin! Directing to Admin Dashboard...');
-      setTimeout(() => {
-        onNavigate('admin');
-      }, 600);
+      setErrorMessage(
+        err.status === 401
+          ? 'Invalid email or password.'
+          : 'Could not reach the DroneHub server. Please try again shortly.'
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setErrorMessage('Invalid credentials or backend server unavailable.');
-    setLoading(false);
   };
 
   const handleRegisterSubmit = async (e) => {
@@ -89,23 +73,17 @@ export const Auth = ({ onNavigate }) => {
         email: form.email,
         phone: form.phone,
         password: form.password,
-        role: form.role,
+        account_type: form.role,
       });
 
       if (res.success) {
-        localStorage.setItem('dh_token', res.token);
-        localStorage.setItem('dh_user', JSON.stringify(res.user));
-        setSuccessMessage('Account created successfully in database!');
-
-        setTimeout(() => {
-          onNavigate('home');
-        }, 1200);
+        setSuccessMessage('Account created successfully!');
+        setTimeout(() => onNavigate('account'), 1200);
       } else {
         setErrorMessage(res.message || 'Registration failed.');
       }
     } catch (err) {
-      console.error(err);
-      setErrorMessage('Could not connect to registration server.');
+      setErrorMessage(err.message || 'Could not connect to the registration server.');
     } finally {
       setLoading(false);
     }
@@ -211,12 +189,6 @@ export const Auth = ({ onNavigate }) => {
                     className={`${inputClass} pl-10`}
                   />
                 </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-cyan-200 text-[11px] space-y-1">
-                <div className="font-bold text-cyan-300">Super Admin Demo Credentials:</div>
-                <div>Email: <span className="font-mono font-semibold text-white">admin@dronehub.com.au</span></div>
-                <div>Password: <span className="font-mono font-semibold text-white">Admin123!Secure</span></div>
               </div>
 
               <button

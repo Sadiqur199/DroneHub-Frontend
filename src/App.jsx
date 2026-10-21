@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DRONES } from './data/products';
+import { session } from './services/api';
 import { Navbar } from './Components/layout/Navbar';
 import { Footer } from './Components/layout/Footer';
 import { Home } from './pages/Home';
@@ -11,6 +12,7 @@ import { Contact } from './pages/Contact';
 import { Auth } from './pages/Auth';
 import { Cart } from './pages/Cart';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { CustomerDashboard } from './pages/CustomerDashboard';
 import { About } from './pages/About';
 import { Industries } from './pages/Industries';
 import { Projects } from './pages/Projects';
@@ -31,6 +33,17 @@ export const App = () => {
 
   // Navigation handler
   const handleNavigate = (page) => {
+    // Route guard: the admin dashboard is for signed-in administrators only.
+    if (page === 'admin' && !session.isAdmin()) {
+      setCurrentPage(session.isLoggedIn() ? 'account' : 'auth');
+      return;
+    }
+
+    if (page === 'account' && !session.isLoggedIn()) {
+      setCurrentPage('auth');
+      return;
+    }
+
     setCurrentPage(page);
   };
 
@@ -155,6 +168,10 @@ export const App = () => {
 
         {currentPage === 'auth' && (
           <Auth onNavigate={handleNavigate} />
+        )}
+
+        {currentPage === 'account' && (
+          <CustomerDashboard onNavigate={handleNavigate} />
         )}
 
         {currentPage === 'cart' && (

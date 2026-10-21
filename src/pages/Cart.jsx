@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatAud, calculateGst, COMPANY_INFO } from '../data/products';
-import { ordersApi } from '../services/api';
+import { ordersApi, session } from '../services/api';
 import { 
   Trash2, Plus, Minus, ShoppingBag, Truck, ShieldCheck, 
   ArrowRight, CheckCircle2, ChevronRight, ArrowLeft, Upload, FileText, AlertCircle, Clock 
@@ -27,17 +27,14 @@ export const Cart = ({ cart, onUpdateQty, onRemoveItem, onClearCart, onNavigate 
 
   // Auto-fill form if user is already logged in
   React.useEffect(() => {
-    const savedUser = localStorage.getItem('dh_user');
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        setFormData(prev => ({
-          ...prev,
-          name: u.name || prev.name,
-          email: u.email || prev.email,
-          phone: u.phone || prev.phone,
-        }));
-      } catch (e) {}
+    const u = session.getUser();
+    if (u) {
+      setFormData(prev => ({
+        ...prev,
+        name: u.name || prev.name,
+        email: u.email || prev.email,
+        phone: u.phone || prev.phone,
+      }));
     }
   }, []);
 
@@ -75,6 +72,13 @@ export const Cart = ({ cart, onUpdateQty, onRemoveItem, onClearCart, onNavigate 
       return;
     }
 
+    // Checkout requires a signed-in account so the order is tied to a customer.
+    if (!session.isLoggedIn()) {
+      setErrorMsg('Please sign in before placing an order.');
+      onNavigate('auth');
+      return;
+    }
+
     if (!formData.name || !formData.email || !formData.phone || !formData.address) {
       setErrorMsg('Please complete all required customer information fields.');
       return;
@@ -109,7 +113,11 @@ export const Cart = ({ cart, onUpdateQty, onRemoveItem, onClearCart, onNavigate 
       }
     } catch (err) {
       console.error('Checkout error:', err);
-      setErrorMsg('Network error connecting to backend API. Please retry.');
+      setErrorMsg(
+        err.status === 401
+          ? 'Your session has expired. Please sign in again.'
+          : err.message || 'Network error connecting to backend API. Please retry.'
+      );
     } finally {
       setSubmitting(false);
     }

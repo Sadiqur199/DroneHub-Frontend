@@ -22,15 +22,20 @@ export const ShopProductCard = ({
   } else if (activeRole === 'agent' && product.role_prices?.agent) {
     basePriceCents = product.role_prices.agent;
     roleLabel = 'Service Agent Price';
+  } else if (activeRole === 'normal' && product.role_prices?.normal != null) {
+    basePriceCents = product.role_prices.normal;
   }
 
-  // Check discount
-  const hasDiscount = (product.discount_type && product.discount_type !== 'none' && product.discount_value > 0) ||
-                      (product.sale_price_cents && product.sale_price_cents < basePriceCents && activeRole === 'normal');
+  // The server already resolved this customer's price (including any active
+  // promotion), so the strike-through price comes straight from the API.
+  const originalPriceCents = product.original_price_cents || 0;
+  const hasDiscount = !!(
+    product.is_sale ||
+    (product.discount_type && product.discount_type !== 'none' && product.discount_value > 0)
+  );
 
-  const finalPriceCents = hasDiscount && activeRole === 'normal'
-    ? (product.sale_price_cents || basePriceCents)
-    : basePriceCents;
+  const finalPriceCents = basePriceCents;
+  const showStrikeThrough = hasDiscount && originalPriceCents > finalPriceCents;
 
   const gstCents = calculateGst(finalPriceCents);
 
@@ -184,16 +189,16 @@ export const ShopProductCard = ({
               <div className="text-xl font-bold text-white tracking-tight font-mono">
                 {formatAud(finalPriceCents)}
               </div>
-              {hasDiscount && activeRole === 'normal' && (
+              {showStrikeThrough && (
                 <div className="text-xs line-through text-slate-500 font-mono">
-                  {formatAud(basePriceCents)}
+                  {formatAud(originalPriceCents)}
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center justify-between text-[11px] text-slate-400 mt-0.5">
               <span>Includes 10% GST ({formatAud(gstCents)})</span>
-              {activeRole !== 'normal' && (
+              {activeRole !== 'normal' && product.role_prices && (
                 <span className="font-semibold text-cyan-400 font-mono text-[10px] bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/60">
                   {roleLabel}
                 </span>

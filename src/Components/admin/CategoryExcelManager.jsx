@@ -4,7 +4,7 @@ import { formatAud } from '../../data/products';
 import {
   FileSpreadsheet, Download, Upload, Trash2, CheckCircle2,
   AlertCircle, Plane, Battery, Wrench, Package, Search,
-  Plus, Eye, RefreshCw, X, ArrowUpRight
+  Plus, Eye, RefreshCw, X, ArrowUpRight, Pencil
 } from 'lucide-react';
 
 export const CategoryExcelManager = ({ onClose, onProductsChanged }) => {
@@ -21,10 +21,14 @@ export const CategoryExcelManager = ({ onClose, onProductsChanged }) => {
   const fileInputRef = useRef(null);
 
   // Load products
-  const reloadProducts = () => {
-    const all = productStore.getAll();
-    setProducts(all);
-    if (onProductsChanged) onProductsChanged(all);
+  const reloadProducts = async () => {
+    try {
+      const all = await productStore.getAll();
+      setProducts(all);
+      if (onProductsChanged) onProductsChanged(all);
+    } catch (err) {
+      notify('Could not load the catalogue: ' + err.message, 'error');
+    }
   };
 
   useEffect(() => {
@@ -136,26 +140,89 @@ export const CategoryExcelManager = ({ onClose, onProductsChanged }) => {
   };
 
   // Confirm Import
-  const handleConfirmImport = () => {
-    if (parsedRows.length === 0) return;
+  const handleConfirmImport = async () => {
+    if (!selectedFile) return;
+    setIsParsing(true);
     try {
-      productStore.addBatch(parsedRows);
-      notify(`Successfully imported ${parsedRows.length} ${currentCategoryMeta.label} into the store!`);
+      const res = await productStore.addBatch(selectedFile, activeTab);
+      const extra = res?.errors?.length ? ` (${res.errors.length} row(s) skipped)` : '';
+      notify(`Successfully imported ${res?.imported ?? parsedRows.length} ${currentCategoryMeta.label} into the store!${extra}`);
       setSelectedFile(null);
       setParsedRows([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      reloadProducts();
+      await reloadProducts();
     } catch (err) {
       notify('Import failed: ' + err.message, 'error');
+    } finally {
+      setIsParsing(false);
     }
   };
 
   // Delete product
-  const handleDeleteProduct = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      productStore.delete(id);
+  const handleDeleteProduct = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    try {
+      await productStore.delete(id);
       notify(`Deleted "${name}"`);
-      reloadProducts();
+      await reloadProducts();
+    } catch (err) {
+      notify('Delete failed: ' + err.message, 'error');
+    }
+  };
+
+  // ─────────────────────────────────────────────
+  // Inline edit
+  // ─────────────────────────────────────────────
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const openEditProduct = (product) => {
+    setEditing(product);
+    setEditForm({
+      name: product.name || '',
+      sku: product.sku || product.model_number || '',
+      subcategory: product.subcategory || '',
+      price_normal: product.price_cents ? (product.price_cents / 100).toFixed(2) : '',
+      price_wholesale: product.role_prices?.wholesale ? (product.role_prices.wholesale / 100).toFixed(2) : '',
+      price_agent: product.role_prices?.agent ? (product.role_prices.agent / 100).toFixed(2) : '',
+      stock: product.stock_qty ?? 0,
+      visibility_roles: product.visibility_roles?.length ? product.visibility_roles : ['normal', 'wholesale', 'agent'],
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editing) return;
+
+    setSaving(true);
+    try {
+      const normal = Math.round((parseFloat(editForm.price_normal) || 0) * 100);
+      const wholesale = editForm.price_wholesale ? Math.round(parseFloat(editForm.price_wholesale) * 100) : null;
+      const agent = editForm.price_agent ? Math.round(parseFloat(editForm.price_agent) * 100) : null;
+
+      await productStore.update(editing.id, {
+        name: editForm.name,
+        sku: editForm.sku,
+        model_number: editForm.sku,
+        category: editing.category,
+        subcategory: editForm.subcategory,
+        price_cents: normal,
+        stock_qty: Number(editForm.stock) || 0,
+        short_description: editing.short_description || '',
+        full_description: editing.full_description || editing.description || '',
+        image_url: editing.image_url || '',
+        role_prices: { normal, wholesale, agent },
+        visibility_roles: editForm.visibility_roles,
+      });
+
+      notify(`Updated "${editForm.name}"`);
+      setEditing(null);
+      await reloadProducts();
+    } catch (err) {
+      notify('Update failed: ' + err.message, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -446,13 +513,22 @@ export const CategoryExcelManager = ({ onClose, onProductsChanged }) => {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleDeleteProduct(p.id, p.name)}
-                          className="p-2 rounded-lg bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/80 transition-all"
-                          title="Delete product from catalog"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => openEditProduct(p)}
+                            className="p-2 rounded-lg bg-slate-900 hover:bg-cyan-950 text-slate-400 hover:text-cyan-300 border border-slate-800 hover:border-cyan-800/80 transition-all"
+                            title="Edit product"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(p.id, p.name)}
+                            className="p-2 rounded-lg bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/80 transition-all"
+                            title="Delete product from catalog"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -462,6 +538,154 @@ export const CategoryExcelManager = ({ onClose, onProductsChanged }) => {
           )}
         </div>
       </div>
+
+      {/* Edit Product Modal */}
+      {editing && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveEdit}
+            className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white">Edit Product</h3>
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="text-slate-500 hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-slate-300 block mb-1">Product Name *</label>
+              <input
+                type="text"
+                required
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">SKU / Model</label>
+                <input
+                  type="text"
+                  value={editForm.sku}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, sku: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Subcategory</label>
+                <input
+                  type="text"
+                  value={editForm.subcategory}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, subcategory: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Retail $</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editForm.price_normal}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, price_normal: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Wholesale $</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.price_wholesale}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, price_wholesale: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Agent $</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.price_agent}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, price_agent: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Stock</label>
+                <input
+                  type="number"
+                  value={editForm.stock}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, stock: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Visible To</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'normal', label: 'Retail' },
+                    { id: 'wholesale', label: 'Wholesale' },
+                    { id: 'agent', label: 'Agent' },
+                  ].map((role) => {
+                    const checked = editForm.visibility_roles.includes(role.id);
+                    return (
+                      <button
+                        type="button"
+                        key={role.id}
+                        onClick={() => {
+                          const has = editForm.visibility_roles.includes(role.id);
+                          const next = has
+                            ? editForm.visibility_roles.filter(r => r !== role.id)
+                            : [...editForm.visibility_roles, role.id];
+                          setEditForm(prev => ({ ...prev, visibility_roles: next.length ? next : [role.id] }));
+                        }}
+                        className={`px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${
+                          checked
+                            ? 'bg-cyan-950 border-cyan-700 text-cyan-300'
+                            : 'bg-slate-950 border-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {role.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 text-white text-xs font-bold"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

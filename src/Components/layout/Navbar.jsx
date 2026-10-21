@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { COMPANY_INFO } from '../../data/products';
+import { authApi, session } from '../../services/api';
 import { 
   Phone, Mail, ShoppingBag, Menu, X, User, Search, ChevronDown, 
   ShieldCheck, LogOut, Video, LayoutDashboard 
@@ -27,9 +28,8 @@ export const Navbar = ({
     checkUser();
   }, [currentPage]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('dh_token');
-    localStorage.removeItem('dh_user');
+  const handleLogout = async () => {
+    await authApi.logout();
     setUser(null);
     onNavigate('home');
   };
@@ -137,23 +137,37 @@ export const Navbar = ({
 
           {/* Right Actions */}
           <div className="flex items-center gap-2.5">
-            {/* User Login / Admin Button */}
-            {/* Quick Admin Shortcut & User Actions */}
+            {/* Admin shortcut — only for signed in administrators */}
+          {user && (
             <button
-              onClick={() => onNavigate('admin')}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all"
-              title="Open Admin Dashboard"
+              onClick={() => { onNavigate('account'); setMobileMenuOpen(false); }}
+              className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold text-cyan-300 bg-slate-800/90 border border-cyan-500/30 flex items-center gap-2 mt-2"
             >
-              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Admin</span>
+              <User className="w-3.5 h-3.5 text-cyan-400" />
+              <span>My Account</span>
             </button>
+          )}
+          {user?.is_admin && (
+              <button
+                onClick={() => onNavigate('admin')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all"
+                title="Open Admin Dashboard"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Admin</span>
+              </button>
+            )}
 
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-200">
+                <button
+                  onClick={() => onNavigate('account')}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-200 hover:border-cyan-500/40 transition-colors"
+                  title="My Account"
+                >
                   <User className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="font-semibold">{user.name.split(' ')[0]}</span>
-                </div>
+                </button>
 
                 <button
                   onClick={handleLogout}

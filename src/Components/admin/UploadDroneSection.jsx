@@ -4,13 +4,15 @@ import { formatAud } from '../../data/products';
 import {
   Plane, Upload, Download, Plus, Trash2, FileSpreadsheet,
   CheckCircle2, AlertCircle, Sparkles, Eye, ShieldCheck,
-  Tag, DollarSign, Percent, Layers, Box
+  Tag, DollarSign, Percent, Layers, Box, Pencil, Save, RefreshCw
 } from 'lucide-react';
 
 export const UploadDroneSection = () => {
   const [drones, setDrones] = useState([]);
   const [droneCategories, setDroneCategories] = useState([]);
   const [notice, setNotice] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State
   const [form, setForm] = useState({
@@ -38,20 +40,37 @@ export const UploadDroneSection = () => {
   const [excelFile, setExcelFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
   const [parseError, setParseError] = useState('');
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const reload = () => {
-      const all = productStore.getAll();
-      setDrones(all.filter(p => p.category === 'drones'));
-      
-      const cats = categoryStore.getByType('drone');
-      setDroneCategories(cats);
+    const reload = async () => {
+      try {
+        const all = await productStore.getAll();
+        setDrones(all.filter(p => p.category === 'drones'));
+      } catch (err) {
+        triggerNotice('Could not load the drone catalogue: ' + err.message, 'error');
+      }
     };
-    reload();
 
-    const unsubP = productStore.subscribe(reload);
-    const unsubC = categoryStore.subscribe(reload);
+    const reloadCategories = async () => {
+      try {
+        await categoryStore.getAll();
+        setDroneCategories(categoryStore.getByType('drone'));
+      } catch (err) {
+        /* categories are non critical for the upload form */
+      }
+    };
+
+    reload();
+    reloadCategories();
+
+    const unsubP = productStore.subscribe((updated) => {
+      setDrones((updated || []).filter(p => p.category === 'drones'));
+    });
+    const unsubC = categoryStore.subscribe((updated) => {
+      setDroneCategories((updated || []).filter(c => c.type === 'drone'));
+    });
     return () => {
       unsubP();
       unsubC();
@@ -99,13 +118,15 @@ export const UploadDroneSection = () => {
     calculatedSalePrice = Math.max(0, normalPriceNum - discountValNum);
   }
 
-  // Handle Form Submit
-  const handleFormSubmit = (e) => {
+  // Handle Form Submit (create or edit)
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.price_normal) {
       triggerNotice('Please provide drone name and normal price.', 'error');
       return;
     }
+
+    setSubmitting(true);
 
     try {
       const normalCents = Math.round(normalPriceNum * 100);
@@ -113,10 +134,14 @@ export const UploadDroneSection = () => {
       const agentCents = Math.round((parseFloat(form.price_agent) || normalPriceNum * 0.80) * 100);
       const saleCents = Math.round(calculatedSalePrice * 100);
 
+      const modelNumber = form.model_number.trim()
+        || (editing?.model_number || editing?.sku)
+        || `DH-DRN-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const newDrone = {
         name: form.name.trim(),
-        model_number: form.model_number.trim() || `DH-DRN-${Math.floor(1000 + Math.random() * 9000)}`,
-        sku: form.model_number.trim() || `DH-DRN-${Math.floor(1000 + Math.random() * 9000)}`,
+        model_number: modelNumber,
+        sku: modelNumber,
         category: 'drones',
         subcategory: form.subcategory,
         brand: 'DJI Enterprise',
@@ -138,32 +163,69 @@ export const UploadDroneSection = () => {
         image_url: form.image_url.trim(),
       };
 
-      productStore.add(newDrone);
-      triggerNotice(`Drone "${form.name}" uploaded successfully!`);
+      if (editing) {
+        await productStore.update(editing.id, newDrone);
+        triggerNotice(`Drone "${newDrone.name}" updated successfully!`);
+      } else {
+        await productStore.add(newDrone);
+        triggerNotice(`Drone "${newDrone.name}" uploaded successfully!`);
+      }
 
-      // Reset form
-      setForm({
-        name: '',
-        model_number: '',
-        category: 'Commercial Drones',
-        subcategory: 'Agricultural & Spraying',
-        price_normal: '',
-        price_wholesale: '',
-        price_agent: '',
-        discount_type: 'none',
-        discount_value: '',
-        stock: 5,
-        short_description: '',
-        full_description: '',
-        image_url: '',
-        visibility_roles: ['normal', 'wholesale', 'agent'],
-        flight_time: '',
-        payload_capacity: '',
-      });
-      setImageFile(null);
+      resetForm();
     } catch (err) {
-      triggerNotice('Failed to upload drone: ' + err.message, 'error');
+      triggerNotice('Failed to save drone: ' + err.message, 'error');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  // Load an existing drone into the form for editing
+  const openEdit = (drone) => {
+    setEditing(drone);
+    setForm({
+      name: drone.name || '',
+      model_number: drone.model_number || drone.sku || '',
+      category: 'Commercial Drones',
+      subcategory: drone.subcategory || 'Agricultural & Spraying',
+      price_normal: drone.price_cents ? (drone.price_cents / 100).toFixed(2) : '',
+      price_wholesale: drone.role_prices?.wholesale ? (drone.role_prices.wholesale / 100).toFixed(2) : '',
+      price_agent: drone.role_prices?.agent ? (drone.role_prices.agent / 100).toFixed(2) : '',
+      discount_type: drone.discount_type || 'none',
+      discount_value: drone.discount_value || 0,
+      stock: drone.stock_qty ?? 5,
+      short_description: drone.short_description || '',
+      full_description: drone.full_description || drone.description || '',
+      image_url: drone.image_url || '',
+      visibility_roles: drone.visibility_roles?.length
+        ? drone.visibility_roles
+        : ['normal', 'wholesale', 'agent'],
+      flight_time: (drone.flight_time || '').replace(/\s*Min Flight Time$/i, ''),
+      payload_capacity: drone.specs?.find(s => s.label === 'Payload')?.value || '',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditing(null);
+    setForm({
+      name: '',
+      model_number: '',
+      category: 'Commercial Drones',
+      subcategory: 'Agricultural & Spraying',
+      price_normal: '',
+      price_wholesale: '',
+      price_agent: '',
+      discount_type: 'none',
+      discount_value: '',
+      stock: 5,
+      short_description: '',
+      full_description: '',
+      image_url: '',
+      visibility_roles: ['normal', 'wholesale', 'agent'],
+      flight_time: '',
+      payload_capacity: '',
+    });
+    setImageFile(null);
   };
 
   // Excel handlers
@@ -192,23 +254,30 @@ export const UploadDroneSection = () => {
     }
   };
 
-  const handleConfirmExcelImport = () => {
-    if (parsedRows.length === 0) return;
+  const handleConfirmExcelImport = async () => {
+    if (!excelFile) return;
+    setImporting(true);
     try {
-      productStore.addBatch(parsedRows);
-      triggerNotice(`Imported ${parsedRows.length} drones successfully!`);
+      const res = await productStore.addBatch(excelFile, 'drones');
+      const extra = res?.errors?.length ? ` (${res.errors.length} row(s) skipped)` : '';
+      triggerNotice(`Imported ${res?.imported ?? parsedRows.length} drones successfully!${extra}`);
       setExcelFile(null);
       setParsedRows([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       triggerNotice('Import failed: ' + err.message, 'error');
+    } finally {
+      setImporting(false);
     }
   };
 
-  const handleDeleteDrone = (id, name) => {
-    if (window.confirm(`Delete drone "${name}" from store catalog?`)) {
-      productStore.delete(id);
+  const handleDeleteDrone = async (id, name) => {
+    if (!window.confirm(`Delete drone "${name}" from store catalog?`)) return;
+    try {
+      await productStore.delete(id);
       triggerNotice(`Deleted "${name}"`);
+    } catch (err) {
+      triggerNotice('Delete failed: ' + err.message, 'error');
     }
   };
 
@@ -298,10 +367,11 @@ export const UploadDroneSection = () => {
               </button>
               <button
                 onClick={handleConfirmExcelImport}
-                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                disabled={importing}
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-300 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Import ({parsedRows.length} Drones)</span>
+                {importing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>{importing ? 'Importing...' : `Confirm & Import (${parsedRows.length} Drones)`}</span>
               </button>
             </div>
           </div>
@@ -342,8 +412,17 @@ export const UploadDroneSection = () => {
         <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
           <Plane className="w-5 h-5 text-cyan-600" />
           <h3 className="text-lg font-bold text-gray-900">
-            Single Drone Manual Upload Form
+            {editing ? `Edit Drone — ${editing.name}` : 'Single Drone Manual Upload Form'}
           </h3>
+          {editing && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="ml-auto px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleFormSubmit} className="space-y-6">
@@ -619,10 +698,19 @@ export const UploadDroneSection = () => {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-md shadow-cyan-600/20 transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-300 text-white font-bold text-xs shadow-md shadow-cyan-600/20 transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
-              <span>Upload Drone to Catalog</span>
+              {submitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : editing ? (
+                <Save className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              <span>
+                {submitting ? 'Saving...' : editing ? 'Save Changes' : 'Upload Drone to Catalog'}
+              </span>
             </button>
           </div>
         </form>
@@ -651,7 +739,7 @@ export const UploadDroneSection = () => {
                 <th className="py-3 px-3">Agent Price</th>
                 <th className="py-3 px-3">Visible To</th>
                 <th className="py-3 px-3">Stock</th>
-                <th className="py-3 px-3 text-right">Delete</th>
+                <th className="py-3 px-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -699,13 +787,22 @@ export const UploadDroneSection = () => {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => handleDeleteDrone(d.id, d.name)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Delete Drone"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(d)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 transition-colors"
+                        title="Edit Drone"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDrone(d.id, d.name)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Delete Drone"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

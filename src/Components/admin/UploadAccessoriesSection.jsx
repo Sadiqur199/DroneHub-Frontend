@@ -4,7 +4,7 @@ import { formatAud } from '../../data/products';
 import {
   Battery, Upload, Download, Plus, Trash2, FileSpreadsheet,
   CheckCircle2, AlertCircle, ShieldCheck, Tag, DollarSign,
-  Box, Plane
+  Box, Plane, Pencil, Save, RefreshCw
 } from 'lucide-react';
 
 export const UploadAccessoriesSection = () => {
@@ -12,6 +12,8 @@ export const UploadAccessoriesSection = () => {
   const [dronesList, setDronesList] = useState([]);
   const [accCategories, setAccCategories] = useState([]);
   const [notice, setNotice] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State
   const [form, setForm] = useState({
@@ -35,21 +37,40 @@ export const UploadAccessoriesSection = () => {
   const [excelFile, setExcelFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
   const [parseError, setParseError] = useState('');
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const reload = () => {
-      const all = productStore.getAll();
-      setAccessories(all.filter(p => p.category === 'accessories'));
-      setDronesList(productStore.getDroneList());
-
-      const cats = categoryStore.getByType('accessory');
-      setAccCategories(cats);
+    const reload = async () => {
+      try {
+        const all = await productStore.getAll();
+        setAccessories(all.filter(p => p.category === 'accessories'));
+        setDronesList(productStore.getDroneList());
+      } catch (err) {
+        triggerNotice('Could not load the accessories catalogue: ' + err.message, 'error');
+      }
     };
-    reload();
 
-    const unsubP = productStore.subscribe(reload);
-    const unsubC = categoryStore.subscribe(reload);
+    const reloadCategories = async () => {
+      try {
+        await categoryStore.getAll();
+        setAccCategories(categoryStore.getByType('accessory'));
+      } catch (err) {
+        /* non critical */
+      }
+    };
+
+    reload();
+    reloadCategories();
+
+    const unsubP = productStore.subscribe((updated) => {
+      const list = updated || [];
+      setAccessories(list.filter(p => p.category === 'accessories'));
+      setDronesList(productStore.getDroneList());
+    });
+    const unsubC = categoryStore.subscribe((updated) => {
+      setAccCategories((updated || []).filter(c => c.type === 'accessory'));
+    });
     return () => {
       unsubP();
       unsubC();
@@ -94,12 +115,14 @@ export const UploadAccessoriesSection = () => {
     calculatedSalePrice = Math.max(0, normalPriceNum - discountValNum);
   }
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.price_normal) {
       triggerNotice('Please provide accessory name and normal price.', 'error');
       return;
     }
+
+    setSubmitting(true);
 
     try {
       const normalCents = Math.round(normalPriceNum * 100);
@@ -107,10 +130,12 @@ export const UploadAccessoriesSection = () => {
       const agentCents = Math.round((parseFloat(form.price_agent) || normalPriceNum * 0.80) * 100);
       const saleCents = Math.round(calculatedSalePrice * 100);
 
+      const sku = form.sku.trim() || editing?.sku || `DH-ACC-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const newAccessory = {
         name: form.name.trim(),
-        model_number: form.sku.trim() || `DH-ACC-${Math.floor(1000 + Math.random() * 9000)}`,
-        sku: form.sku.trim() || `DH-ACC-${Math.floor(1000 + Math.random() * 9000)}`,
+        model_number: sku,
+        sku: sku,
         category: 'accessories',
         subcategory: form.subcategory,
         brand: 'DJI Enterprise',
@@ -131,29 +156,61 @@ export const UploadAccessoriesSection = () => {
         image_url: form.image_url.trim(),
       };
 
-      productStore.add(newAccessory);
-      triggerNotice(`Accessory "${form.name}" uploaded successfully!`);
+      if (editing) {
+        await productStore.update(editing.id, newAccessory);
+        triggerNotice(`Accessory "${newAccessory.name}" updated successfully!`);
+      } else {
+        await productStore.add(newAccessory);
+        triggerNotice(`Accessory "${newAccessory.name}" uploaded successfully!`);
+      }
 
-      // Reset
-      setForm({
-        name: '',
-        sku: '',
-        drone_name: 'Universal / All Airframes',
-        subcategory: 'Intelligent Batteries',
-        price_normal: '',
-        price_wholesale: '',
-        price_agent: '',
-        discount_type: 'none',
-        discount_value: '',
-        stock: 15,
-        short_description: '',
-        full_description: '',
-        image_url: '',
-        visibility_roles: ['normal', 'wholesale', 'agent'],
-      });
+      resetForm();
     } catch (err) {
-      triggerNotice('Failed to upload accessory: ' + err.message, 'error');
+      triggerNotice('Failed to save accessory: ' + err.message, 'error');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const openEdit = (accessory) => {
+    setEditing(accessory);
+    setForm({
+      name: accessory.name || '',
+      sku: accessory.sku || accessory.model_number || '',
+      drone_name: accessory.drone_name || 'Universal / All Airframes',
+      subcategory: accessory.subcategory || 'Intelligent Batteries',
+      price_normal: accessory.price_cents ? (accessory.price_cents / 100).toFixed(2) : '',
+      price_wholesale: accessory.role_prices?.wholesale ? (accessory.role_prices.wholesale / 100).toFixed(2) : '',
+      price_agent: accessory.role_prices?.agent ? (accessory.role_prices.agent / 100).toFixed(2) : '',
+      discount_type: accessory.discount_type || 'none',
+      discount_value: accessory.discount_value || 0,
+      stock: accessory.stock_qty ?? 15,
+      short_description: accessory.short_description || '',
+      full_description: accessory.full_description || accessory.description || '',
+      image_url: accessory.image_url || '',
+      visibility_roles: accessory.visibility_roles?.length ? accessory.visibility_roles : ['normal', 'wholesale', 'agent'],
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditing(null);
+    setForm({
+      name: '',
+      sku: '',
+      drone_name: 'Universal / All Airframes',
+      subcategory: 'Intelligent Batteries',
+      price_normal: '',
+      price_wholesale: '',
+      price_agent: '',
+      discount_type: 'none',
+      discount_value: '',
+      stock: 15,
+      short_description: '',
+      full_description: '',
+      image_url: '',
+      visibility_roles: ['normal', 'wholesale', 'agent'],
+    });
   };
 
   // Excel handlers
@@ -182,23 +239,30 @@ export const UploadAccessoriesSection = () => {
     }
   };
 
-  const handleConfirmExcelImport = () => {
-    if (parsedRows.length === 0) return;
+  const handleConfirmExcelImport = async () => {
+    if (!excelFile) return;
+    setImporting(true);
     try {
-      productStore.addBatch(parsedRows);
-      triggerNotice(`Imported ${parsedRows.length} accessories successfully!`);
+      const res = await productStore.addBatch(excelFile, 'accessories');
+      const extra = res?.errors?.length ? ` (${res.errors.length} row(s) skipped)` : '';
+      triggerNotice(`Imported ${res?.imported ?? parsedRows.length} accessories successfully!${extra}`);
       setExcelFile(null);
       setParsedRows([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       triggerNotice('Import failed: ' + err.message, 'error');
+    } finally {
+      setImporting(false);
     }
   };
 
-  const handleDeleteAccessory = (id, name) => {
-    if (window.confirm(`Delete accessory "${name}" from store catalog?`)) {
-      productStore.delete(id);
+  const handleDeleteAccessory = async (id, name) => {
+    if (!window.confirm(`Delete accessory "${name}" from store catalog?`)) return;
+    try {
+      await productStore.delete(id);
       triggerNotice(`Deleted "${name}"`);
+    } catch (err) {
+      triggerNotice('Delete failed: ' + err.message, 'error');
     }
   };
 
@@ -290,7 +354,7 @@ export const UploadAccessoriesSection = () => {
                 className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Import ({parsedRows.length} Accessories)</span>
+                <span>{importing ? 'Importing...' : `Confirm & Import (${parsedRows.length} Accessories)`}</span>
               </button>
             </div>
           </div>
@@ -329,8 +393,17 @@ export const UploadAccessoriesSection = () => {
         <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
           <Battery className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-bold text-gray-900">
-            Single Accessory Manual Upload Form
+            {editing ? `Edit Accessory — ${editing.name}` : 'Single Accessory Manual Upload Form'}
           </h3>
+          {editing && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="ml-auto px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleFormSubmit} className="space-y-6">
@@ -572,10 +645,19 @@ export const UploadAccessoriesSection = () => {
           <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-gray-300 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
-              <span>Upload Accessory to Catalog</span>
+              {submitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : editing ? (
+                <Save className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              <span>
+                {submitting ? 'Saving...' : editing ? 'Save Changes' : 'Upload Accessory to Catalog'}
+              </span>
             </button>
           </div>
         </form>
@@ -604,7 +686,7 @@ export const UploadAccessoriesSection = () => {
                 <th className="py-3 px-3">Wholesale Price</th>
                 <th className="py-3 px-3">Agent Price</th>
                 <th className="py-3 px-3">Stock</th>
-                <th className="py-3 px-3 text-right">Delete</th>
+                <th className="py-3 px-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -646,13 +728,22 @@ export const UploadAccessoriesSection = () => {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => handleDeleteAccessory(a.id, a.name)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Delete Accessory"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(a)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 transition-colors"
+                        title="Edit Accessory"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAccessory(a.id, a.name)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Delete Accessory"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

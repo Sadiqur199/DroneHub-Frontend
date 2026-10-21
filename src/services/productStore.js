@@ -1,75 +1,8 @@
 import * as XLSX from 'xlsx';
-import { DRONES, COMBOS, getAllParts, getAllAccessories, getAllProducts, formatAud, calculateGst } from '../data/products';
+import { productsApi, categoriesApi, session } from './api';
 
-const STORAGE_KEY = 'dh_catalog_products_v3';
-const CATEGORIES_KEY = 'dh_catalog_categories_v2';
 const EVENT_NAME = 'dh-products-updated';
 const CATEGORIES_EVENT = 'dh-categories-updated';
-
-// ─────────────────────────────────────────────
-// Default Initial Categories
-// ─────────────────────────────────────────────
-const INITIAL_CATEGORIES = [
-  {
-    id: 'cat-drone-1',
-    name: 'Commercial Drones',
-    slug: 'drones',
-    type: 'drone',
-    description: 'Heavy-lift agricultural spraying drones, radiometric mining survey platforms, and cinema airframes.',
-    subcategories: [
-      'Agricultural & Spraying',
-      'Enterprise & Mining RTK',
-      'Thermal & Inspection',
-      'Cinema & Film',
-      'Survey & Mapping'
-    ]
-  },
-  {
-    id: 'cat-part-1',
-    name: 'Genuine Spare Parts',
-    slug: 'parts',
-    type: 'part',
-    description: 'Original factory replacement parts, propellers, brushless spray pumps, arm locks, and harnesses.',
-    subcategories: [
-      'Propellers & Blades',
-      'Spray Pumps & Nozzles',
-      'Arm Locks & Collars',
-      'Cables & Harnesses',
-      'Motors & ESC',
-      'Frame & Landing Gear',
-      'Gimbals & Sensors',
-      'Avionics & Radar'
-    ]
-  },
-  {
-    id: 'cat-acc-1',
-    name: 'Accessories & Payloads',
-    slug: 'accessories',
-    type: 'accessory',
-    description: 'Intelligent high-energy batteries, fast EFI generators, smart controllers, and RTK base stations.',
-    subcategories: [
-      'Intelligent Batteries',
-      'Charging Hubs & Generators',
-      'Remote Controllers & Monitors',
-      'Payloads & Thermal Sensors',
-      'RTK Base Stations',
-      'Transport Cases & Mounts'
-    ]
-  },
-  {
-    id: 'cat-combo-1',
-    name: 'Turnkey Combos',
-    slug: 'combos',
-    type: 'combo',
-    description: 'Turnkey commercial fleet packages with multiple batteries, rapid chargers, and field gear.',
-    subcategories: [
-      'Agricultural Spray Bundles',
-      'Mining Survey Bundles',
-      'Rapid Thermal & Bushfire Kits',
-      'Dual-Pilot Cinema Kits'
-    ]
-  }
-];
 
 // ─────────────────────────────────────────────
 // Standard Drone Component Sections (for Parts)
@@ -88,375 +21,236 @@ export const DRONE_COMPONENT_SECTIONS = [
   'Other Mechanical Spares'
 ];
 
-// Helper to determine subcategory from item data
-const determineSubcategory = (item, category) => {
-  if (item.subcategory) return item.subcategory;
-  const name = (item.name || '').toLowerCase();
-  const sku = (item.sku || '').toLowerCase();
-  const series = (item.series || '').toLowerCase();
-
-  if (category === 'drones') {
-    if (series.includes('t100') || series.includes('t70') || series.includes('t50') || series.includes('t40') || name.includes('agras') || name.includes('spray') || name.includes('agricultural')) {
-      return 'Agricultural & Spraying';
-    }
-    if (series.includes('matrice') || name.includes('matrice') || name.includes('enterprise') || sku.includes('m350')) {
-      return 'Enterprise & Mining RTK';
-    }
-    if (series.includes('mavic') || name.includes('thermal') || name.includes('survey')) {
-      return 'Thermal & Inspection';
-    }
-    if (series.includes('inspire') || name.includes('inspire') || name.includes('cinema')) {
-      return 'Cinema & Film';
-    }
-    return 'Agricultural & Spraying';
-  }
-
-  if (category === 'accessories') {
-    if (name.includes('battery') || sku.includes('bat') || name.includes('tb65') || name.includes('db2000') || name.includes('bax')) {
-      return 'Intelligent Batteries';
-    }
-    if (name.includes('charger') || name.includes('generator') || name.includes('hub') || sku.includes('gen') || sku.includes('chg')) {
-      return 'Charging Hubs & Generators';
-    }
-    if (name.includes('controller') || name.includes('rc plus') || sku.includes('rc') || name.includes('monitor')) {
-      return 'Remote Controllers & Monitors';
-    }
-    if (name.includes('zenmuse') || name.includes('payload') || name.includes('thermal') || name.includes('lidar') || name.includes('camera')) {
-      return 'Payloads & Thermal Sensors';
-    }
-    if (name.includes('rtk') || name.includes('base station') || name.includes('d-rtk')) {
-      return 'RTK Base Stations';
-    }
-    return 'Intelligent Batteries';
-  }
-
-  if (category === 'parts') {
-    if (name.includes('propeller') || sku.includes('prp') || name.includes('blade')) {
-      return 'Propellers & Blades';
-    }
-    if (name.includes('pump') || sku.includes('pmp') || name.includes('nozzle') || sku.includes('nzl') || name.includes('spray') || name.includes('flow')) {
-      return 'Spray Pumps & Nozzles';
-    }
-    if (name.includes('lock') || sku.includes('lck') || name.includes('collar') || name.includes('hinge')) {
-      return 'Arm Locks & Collars';
-    }
-    if (name.includes('cable') || sku.includes('cbl') || name.includes('harness') || name.includes('connector')) {
-      return 'Cables & Harnesses';
-    }
-    if (name.includes('motor') || name.includes('esc') || name.includes('propulsion')) {
-      return 'Motors & ESC';
-    }
-    if (name.includes('gear') || name.includes('leg') || name.includes('gimbal')) {
-      return 'Frame & Landing Gear';
-    }
-    return 'Propellers & Blades';
-  }
-
-  if (category === 'combos') {
-    return 'Agricultural Spray Bundles';
-  }
-
-  return 'General';
+// ─────────────────────────────────────────────
+// Storefront role -> catalogue category slug
+// ─────────────────────────────────────────────
+export const CATEGORY_FOR_ROLE = {
+  drone: 'drones',
+  part: 'parts',
+  accessory: 'accessories',
+  combo: 'combos',
 };
 
-// Seed initial products from data/products.js
-const getInitialCatalog = () => {
-  const parts = getAllParts();
-  const accessories = getAllAccessories();
-  const rawList = [...DRONES, ...COMBOS, ...parts, ...accessories];
+const listeners = { products: new Set(), categories: new Set() };
 
-  return rawList.map((item) => {
-    const category = item.category || 'parts';
-    const subcategory = determineSubcategory(item, category);
-    const basePriceCents = Number(item.price_cents) || 0;
-
-    // Associated drone (for parts and accessories)
-    let droneName = item.drone_id ? item.drone_id.replace(/-/g, ' ').toUpperCase() : '';
-    if (item.drone_id === 'dji-matrice-350-rtk') droneName = 'DJI Matrice 350 RTK';
-    if (item.drone_id === 'dji-agras-t100') droneName = 'DJI Agras T100';
-    if (item.drone_id === 'dji-agras-t50-agricultural-drone') droneName = 'DJI Agras T50';
-
-    return {
-      id: item.id || `prod-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      name: item.name,
-      model_number: item.sku || `DH-MODEL-${Math.floor(1000 + Math.random() * 9000)}`,
-      sku: item.sku || `DH-SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-      brand: item.brand || 'DroneHub Australia',
-      category: category,
-      subcategory: subcategory,
-      price_cents: basePriceCents,
-      // Discount
-      discount_type: 'none',
-      discount_value: 0,
-      sale_price_cents: basePriceCents,
-      stock_qty: item.stock_qty !== undefined ? Number(item.stock_qty) : 10,
-      short_description: item.short_description || '',
-      full_description: item.description || item.short_description || '',
-      // Associated drone & component section (for parts & accessories)
-      drone_id: item.drone_id || (category === 'drones' ? item.id : null),
-      drone_name: droneName || (category === 'drones' ? item.name : 'Universal / All Airframes'),
-      part_section: subcategory || 'Propellers & Blades',
-      // Role-based visibility
-      visibility_roles: ['normal', 'wholesale', 'agent'],
-      // Tiered Pricing per User Role
-      role_prices: {
-        normal: basePriceCents,
-        wholesale: Math.round(basePriceCents * 0.88), // 12% wholesale dealer discount
-        agent: Math.round(basePriceCents * 0.80),    // 20% commercial service agent discount
-      },
-      image_url: item.image_url || '',
-      specs: item.specs || [],
-      flight_time: item.flight_time || null,
-      created_at: new Date().toISOString(),
-    };
-  });
+const emit = (type, detail) => {
+  window.dispatchEvent(new CustomEvent(type, { detail }));
+  listeners[type === EVENT_NAME ? 'products' : 'categories'].forEach((cb) => cb(detail));
 };
 
 // ─────────────────────────────────────────────
-// Dynamic Category Store
+// Dynamic Category Store (server backed)
 // ─────────────────────────────────────────────
 export const categoryStore = {
-  getAll: () => {
-    try {
-      const stored = localStorage.getItem(CATEGORIES_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    categoryStore.save(INITIAL_CATEGORIES);
-    return INITIAL_CATEGORIES;
-  },
+  cache: [],
+  inflight: null,
 
-  save: (categories) => {
-    try {
-      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-      window.dispatchEvent(new CustomEvent(CATEGORIES_EVENT, { detail: categories }));
-    } catch (e) {}
-  },
+  async getAll() {
+    if (categoryStore.inflight) {
+      return categoryStore.inflight;
+    }
 
-  getByType: (type) => {
-    const all = categoryStore.getAll();
-    return all.filter(c => c.type === type);
-  },
+    const request = (async () => {
+      const res = await categoriesApi.getAll();
+      categoryStore.cache = res?.data || [];
+      emit(CATEGORIES_EVENT, categoryStore.cache);
+      return categoryStore.cache;
+    })();
 
-  addCategory: ({ name, type, description }) => {
-    const all = categoryStore.getAll();
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const newCat = {
-      id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      name,
-      slug: slug || `cat-${Date.now()}`,
-      type: type || 'drone',
-      description: description || '',
-      subcategories: []
-    };
-    const updated = [...all, newCat];
-    categoryStore.save(updated);
-    return newCat;
-  },
-
-  deleteCategory: (id) => {
-    const all = categoryStore.getAll();
-    const updated = all.filter(c => c.id !== id);
-    categoryStore.save(updated);
-    return true;
-  },
-
-  addSubcategory: (categoryId, subName) => {
-    if (!subName || !subName.trim()) return false;
-    const all = categoryStore.getAll();
-    const updated = all.map(cat => {
-      if (cat.id === categoryId) {
-        const existing = cat.subcategories || [];
-        if (!existing.includes(subName.trim())) {
-          return { ...cat, subcategories: [...existing, subName.trim()] };
-        }
-      }
-      return cat;
+    categoryStore.inflight = request.finally(() => {
+      categoryStore.inflight = null;
     });
-    categoryStore.save(updated);
-    return true;
+
+    return categoryStore.inflight;
   },
 
-  deleteSubcategory: (categoryId, subName) => {
-    const all = categoryStore.getAll();
-    const updated = all.map(cat => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          subcategories: (cat.subcategories || []).filter(s => s !== subName)
-        };
-      }
-      return cat;
-    });
-    categoryStore.save(updated);
-    return true;
+  getCached: () => categoryStore.cache,
+
+  getByType: (type) => categoryStore.cache.filter((c) => c.type === type),
+
+  getBySlug: (slug) => categoryStore.cache.find((c) => c.slug === slug),
+
+  async addCategory({ name, type, description }) {
+    const res = await categoriesApi.create({ name, type, description });
+    await categoryStore.getAll();
+    return res;
+  },
+
+  async updateCategory(id, payload) {
+    const res = await categoriesApi.update(id, payload);
+    await categoryStore.getAll();
+    return res;
+  },
+
+  async deleteCategory(id) {
+    const res = await categoriesApi.remove(id);
+    await categoryStore.getAll();
+    return res;
+  },
+
+  async addSubcategory(categoryId, subName) {
+    const res = await categoriesApi.addSubcategory(categoryId, subName);
+    await categoryStore.getAll();
+    return res;
+  },
+
+  async deleteSubcategory(categoryId, subSlug) {
+    const res = await categoriesApi.removeSubcategory(categoryId, subSlug);
+    await categoryStore.getAll();
+    return res;
   },
 
   subscribe: (callback) => {
-    const handler = (e) => callback(e.detail || categoryStore.getAll());
+    const handler = (e) => callback(e.detail || categoryStore.cache);
     window.addEventListener(CATEGORIES_EVENT, handler);
-    return () => window.removeEventListener(CATEGORIES_EVENT, handler);
-  }
+    listeners.categories.add(callback);
+    return () => {
+      window.removeEventListener(CATEGORIES_EVENT, handler);
+      listeners.categories.delete(callback);
+    };
+  },
 };
 
 // ─────────────────────────────────────────────
-// Central Product Store
+// Central Product Store (server backed)
 // ─────────────────────────────────────────────
 export const productStore = {
-  getAll: () => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  cache: [],
+  lastError: null,
+  inflight: null,
+
+  /**
+   * Load the catalogue from the API. The server applies the signed-in
+   * customer's group rules, so a wholesale buyer only ever receives
+   * wholesale-visible products priced at the wholesale rate.
+   */
+  async getAll(params = {}) {
+    // De-duplicate concurrent loads (several panels mount at once).
+    if (productStore.inflight && Object.keys(params).length === 0) {
+      return productStore.inflight;
+    }
+
+    const request = (async () => {
+      try {
+        const res = await productsApi.getAll(params);
+        productStore.cache = res?.data || [];
+        productStore.lastError = null;
+        emit(EVENT_NAME, productStore.cache);
+        return productStore.cache;
+      } catch (err) {
+        productStore.lastError = err.message;
+        throw err;
+      } finally {
+        productStore.inflight = null;
       }
-    } catch (e) {}
-    const initial = getInitialCatalog();
-    productStore.save(initial);
-    return initial;
+    })();
+
+    productStore.inflight = request;
+    return request;
   },
 
-  save: (products) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-      window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: products }));
-    } catch (e) {}
+  getCached: () => productStore.cache,
+
+  getById: (id) => productStore.cache.find((p) => p.id === id),
+
+  /** Drones available for linking parts & accessories. */
+  getDroneList: () =>
+    productStore.cache
+      .filter((p) => p.category === 'drones')
+      .map((d) => ({ id: d.id, name: d.name, model_number: d.model_number || d.sku })),
+
+  /**
+   * Create a product on the server.
+   * @param {object} product  normalised product payload
+   */
+  async add(product) {
+    const fd = new FormData();
+    fd.append('name', product.name || '');
+    fd.append('sku', product.sku || product.model_number || '');
+    fd.append('model_number', product.model_number || product.sku || '');
+    fd.append('category', product.category || 'parts');
+    fd.append('subcategory', product.subcategory || '');
+    fd.append('price_normal', String(product.price_cents ?? 0) / 100);
+    if (product.role_prices?.wholesale != null) {
+      fd.append('price_wholesale', String(product.role_prices.wholesale) / 100);
+    }
+    if (product.role_prices?.agent != null) {
+      fd.append('price_agent', String(product.role_prices.agent) / 100);
+    }
+    if (product.discount_type && product.discount_type !== 'none') {
+      fd.append('discount_type', product.discount_type);
+      fd.append('discount_value', String(product.discount_value || 0));
+    }
+    fd.append('stock', String(product.stock_qty ?? 0));
+    fd.append('short_description', product.short_description || '');
+    fd.append('full_description', product.full_description || product.description || '');
+    fd.append('image_url', product.image_url || '');
+    if (product.flight_time) fd.append('flight_time', product.flight_time);
+    if (product.drone_id) fd.append('drone_id', String(product.drone_id).replace('p-', ''));
+    (product.visibility_roles || []).forEach((r) => fd.append('visibility_roles[]', r));
+
+    const res = await productsApi.create(fd);
+    await productStore.getAll();
+    return res;
   },
 
-  resetToDefault: () => {
-    const initial = getInitialCatalog();
-    productStore.save(initial);
-    return initial;
+  /**
+   * Edit an existing product on the server.
+   */
+  async update(id, product) {
+    const fd = new FormData();
+    fd.append('name', product.name || '');
+    fd.append('sku', product.sku || product.model_number || '');
+    fd.append('model_number', product.model_number || product.sku || '');
+    fd.append('category', product.category || 'parts');
+    fd.append('subcategory', product.subcategory || '');
+    fd.append('price_normal', String(product.price_cents ?? 0) / 100);
+    if (product.role_prices?.wholesale != null) {
+      fd.append('price_wholesale', String(product.role_prices.wholesale) / 100);
+    }
+    if (product.role_prices?.agent != null) {
+      fd.append('price_agent', String(product.role_prices.agent) / 100);
+    }
+    if (product.discount_type && product.discount_type !== 'none') {
+      fd.append('discount_type', product.discount_type);
+      fd.append('discount_value', String(product.discount_value || 0));
+    }
+    fd.append('stock', String(product.stock_qty ?? 0));
+    fd.append('short_description', product.short_description || '');
+    fd.append('full_description', product.full_description || product.description || '');
+    fd.append('image_url', product.image_url || '');
+    if (product.flight_time) fd.append('flight_time', product.flight_time);
+    if (product.drone_id) fd.append('drone_id', String(product.drone_id).replace('p-', ''));
+    (product.visibility_roles || []).forEach((r) => fd.append('visibility_roles[]', r));
+
+    const res = await productsApi.update(id, fd);
+    await productStore.getAll();
+    return res;
   },
 
-  // Get list of existing Drones (for dropdowns when uploading Parts / Accessories)
-  getDroneList: () => {
-    const all = productStore.getAll();
-    return all.filter(p => p.category === 'drones').map(d => ({
-      id: d.id,
-      name: d.name,
-      model_number: d.model_number || d.sku
-    }));
+  async delete(id) {
+    const res = await productsApi.delete(id);
+    await productStore.getAll();
+    return res;
   },
 
-  add: (product) => {
-    const current = productStore.getAll();
-    const normalPriceCents = Number(product.price_cents) || 0;
-    const wholesaleCents = product.role_prices?.wholesale !== undefined
-      ? Number(product.role_prices.wholesale)
-      : Math.round(normalPriceCents * 0.88);
-    const agentCents = product.role_prices?.agent !== undefined
-      ? Number(product.role_prices.agent)
-      : Math.round(normalPriceCents * 0.80);
-
-    const newProduct = {
-      id: product.id || `prod-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      name: product.name,
-      model_number: product.model_number || product.sku || `DH-MDL-${Math.floor(1000 + Math.random() * 9000)}`,
-      sku: product.sku || product.model_number || `DH-SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-      brand: product.brand || 'DroneHub Australia',
-      category: product.category || 'drones',
-      subcategory: product.subcategory || 'General',
-      price_cents: normalPriceCents,
-      discount_type: product.discount_type || 'none',
-      discount_value: Number(product.discount_value) || 0,
-      sale_price_cents: Number(product.sale_price_cents) || normalPriceCents,
-      stock_qty: Number(product.stock_qty) || 0,
-      short_description: product.short_description || '',
-      full_description: product.full_description || product.description || product.short_description || '',
-      // Associated drone & section
-      drone_id: product.drone_id || null,
-      drone_name: product.drone_name || '',
-      part_section: product.part_section || '',
-      // Role-based visibility
-      visibility_roles: Array.isArray(product.visibility_roles) && product.visibility_roles.length > 0
-        ? product.visibility_roles
-        : ['normal', 'wholesale', 'agent'],
-      // Role-based Tiered Pricing
-      role_prices: {
-        normal: normalPriceCents,
-        wholesale: wholesaleCents,
-        agent: agentCents,
-      },
-      image_url: product.image_url ? String(product.image_url).trim() : '',
-      specs: product.specs || [],
-      flight_time: product.flight_time || null,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = [newProduct, ...current];
-    productStore.save(updated);
-    return newProduct;
-  },
-
-  addBatch: (productsArray) => {
-    const current = productStore.getAll();
-    const newItems = productsArray.map((p, idx) => {
-      const normalPriceCents = Number(p.price_cents) || 0;
-      const wholesaleCents = p.role_prices?.wholesale !== undefined
-        ? Number(p.role_prices.wholesale)
-        : Math.round(normalPriceCents * 0.88);
-      const agentCents = p.role_prices?.agent !== undefined
-        ? Number(p.role_prices.agent)
-        : Math.round(normalPriceCents * 0.80);
-
-      return {
-        id: p.id || `prod-xl-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
-        name: p.name || 'Unnamed Hardware',
-        model_number: p.model_number || p.sku || `DH-MDL-${Math.floor(1000 + Math.random() * 9000)}`,
-        sku: p.sku || p.model_number || `DH-SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-        brand: p.brand || 'DroneHub Australia',
-        category: p.category || 'drones',
-        subcategory: p.subcategory || 'General',
-        price_cents: normalPriceCents,
-        discount_type: p.discount_type || 'none',
-        discount_value: Number(p.discount_value) || 0,
-        sale_price_cents: Number(p.sale_price_cents) || normalPriceCents,
-        stock_qty: p.stock_qty !== undefined ? Number(p.stock_qty) : 10,
-        short_description: p.short_description || '',
-        full_description: p.full_description || p.description || p.short_description || '',
-        drone_id: p.drone_id || null,
-        drone_name: p.drone_name || '',
-        part_section: p.part_section || '',
-        visibility_roles: Array.isArray(p.visibility_roles) && p.visibility_roles.length > 0
-          ? p.visibility_roles
-          : ['normal', 'wholesale', 'agent'],
-        role_prices: {
-          normal: normalPriceCents,
-          wholesale: wholesaleCents,
-          agent: agentCents,
-        },
-        image_url: p.image_url ? String(p.image_url).trim() : '',
-        specs: p.specs || [],
-        flight_time: p.flight_time || null,
-        created_at: new Date().toISOString(),
-      };
-    });
-
-    const updated = [...newItems, ...current];
-    productStore.save(updated);
-    return newItems;
-  },
-
-  delete: (id) => {
-    const current = productStore.getAll();
-    const updated = current.filter((p) => p.id !== id);
-    productStore.save(updated);
-    return true;
-  },
-
-  getByCategory: (category) => {
-    const all = productStore.getAll();
-    if (!category || category === 'all') return all;
-    return all.filter((p) => p.category === category);
+  /**
+   * Bulk import from an Excel spreadsheet (server side parsing).
+   */
+  async addBatch(file, category) {
+    const res = await productsApi.importExcel(file, category);
+    await productStore.getAll();
+    return res;
   },
 
   subscribe: (callback) => {
-    const handler = (e) => callback(e.detail || productStore.getAll());
+    const handler = (e) => callback(e.detail || productStore.cache);
     window.addEventListener(EVENT_NAME, handler);
-    return () => window.removeEventListener(EVENT_NAME, handler);
+    listeners.products.add(callback);
+    return () => {
+      window.removeEventListener(EVENT_NAME, handler);
+      listeners.products.delete(callback);
+    };
   },
 
   // ─────────────────────────────────────────────
@@ -510,7 +304,7 @@ export const productStore = {
           'Visible To (normal,wholesale,agent)': 'wholesale,agent',
           'Short Description': 'Compact radiometric thermal and 56x optical zoom sensor for utility and fire inspections.',
           'Full Description': 'Under 1kg rapid deployment thermal drone with 45 minutes flight time.',
-          'Image URL': '' // Blank demo to test clean black placeholder
+          'Image URL': ''
         }
       ];
     } else if (category === 'parts') {
@@ -553,7 +347,7 @@ export const productStore = {
           'Part Name': 'Matrice 350 Dual Downward Gimbal Harness Cable',
           'Part Number/SKU': 'DH-CBL-M350',
           'Compatible Drone': 'DJI Matrice 350 RTK',
-          'Drone Component Section': 'Cables & Wiring Harnesses',
+          'Drone Component Section': 'Cables & Harnesses',
           'Category': 'Genuine Spare Parts',
           'Subcategory': 'Cables & Harnesses',
           'Retail Normal Price (AUD)': 350.00,
@@ -638,7 +432,7 @@ export const productStore = {
       { wch: 30 }, // Visible To
       { wch: 45 }, // Short Description
       { wch: 55 }, // Full Description
-      { wch: 30 }, // Image URL
+      { wch: 30 }  // Image URL
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -647,7 +441,7 @@ export const productStore = {
   },
 
   // ─────────────────────────────────────────────
-  // Parse Uploaded Excel File per Category
+  // Client side preview of an uploaded Excel file
   // ─────────────────────────────────────────────
   parseExcelFile: (file, targetCategory) => {
     return new Promise((resolve, reject) => {
@@ -668,12 +462,11 @@ export const productStore = {
 
           const parsedProducts = rawRows.map((row, index) => {
             const name = row['Drone Name'] || row['Part Name'] || row['Accessory Name'] || row['Product Name'] || row['Name'] || '';
-            const modelNum = row['Drone Model/Number'] || row['Part Number/SKU'] || row['Accessory Number/SKU'] || row['SKU'] || row['sku'] || `DH-ITEM-${Math.floor(1000 + Math.random() * 9000)}`;
+            const modelNum = row['Drone Model/Number'] || row['Part Number/SKU'] || row['Accessory Number/SKU'] || row['SKU'] || row['sku'] || '';
             const compDrone = row['Compatible Drone'] || row['compatible_drone'] || '';
             const compSection = row['Drone Component Section'] || row['component_section'] || '';
-            const subcategory = row['Subcategory'] || row['subcategory'] || determineSubcategory({ name, sku: modelNum }, targetCategory);
-            
-            // Prices
+            const subcategory = row['Subcategory'] || row['subcategory'] || compSection || 'General';
+
             const parsePrice = (val, fallback = 0) => {
               if (val === undefined || val === null || val === '') return fallback;
               const num = parseFloat(String(val).replace(/[$,\s]/g, ''));
@@ -684,7 +477,6 @@ export const productStore = {
             const wholesaleCents = parsePrice(row['Wholesale Price (AUD)'], Math.round(normalPriceCents * 0.88));
             const agentCents = parsePrice(row['Service Agent Price (AUD)'], Math.round(normalPriceCents * 0.80));
 
-            // Discount
             const discountVal = parseFloat(String(row['Discount (%)'] ?? row['Discount'] ?? 0).replace(/[%,]/g, '')) || 0;
             const discountType = discountVal > 0 ? 'percentage' : 'none';
             const salePriceCents = discountVal > 0
@@ -696,7 +488,6 @@ export const productStore = {
             const fullDesc = row['Full Description'] ?? row['full_description'] ?? shortDesc;
             const imageUrl = row['Image URL'] ?? row['image_url'] ?? '';
 
-            // Roles
             const rolesRaw = String(row['Visible To (normal,wholesale,agent)'] ?? 'normal,wholesale,agent').toLowerCase();
             const roles = [];
             if (rolesRaw.includes('normal') || rolesRaw.includes('retail') || rolesRaw.includes('all')) roles.push('normal');
@@ -705,11 +496,9 @@ export const productStore = {
             if (roles.length === 0) roles.push('normal', 'wholesale', 'agent');
 
             return {
-              id: `imported-${Date.now()}-${index}`,
               name: String(name).trim() || `Imported ${targetCategory} #${index + 1}`,
               model_number: String(modelNum).trim(),
               sku: String(modelNum).trim(),
-              brand: 'DJI Official',
               category: targetCategory,
               subcategory: String(subcategory).trim(),
               price_cents: normalPriceCents,
@@ -717,7 +506,6 @@ export const productStore = {
               discount_value: discountVal,
               sale_price_cents: salePriceCents,
               stock_qty: isNaN(stock) ? 10 : stock,
-              drone_id: null,
               drone_name: String(compDrone).trim(),
               part_section: String(compSection).trim(),
               visibility_roles: roles,
@@ -733,7 +521,7 @@ export const productStore = {
             };
           });
 
-          const valid = parsedProducts.filter(p => p.name && p.name !== '');
+          const valid = parsedProducts.filter((p) => p.name && p.name !== '');
           if (valid.length === 0) {
             reject(new Error('No valid rows found in spreadsheet. Ensure Name column is filled.'));
             return;
@@ -748,5 +536,5 @@ export const productStore = {
       reader.onerror = () => reject(new Error('File reading error.'));
       reader.readAsArrayBuffer(file);
     });
-  }
+  },
 };

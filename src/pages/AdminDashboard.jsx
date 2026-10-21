@@ -4,7 +4,7 @@ import {
   ADMIN_CUSTOMERS, ADMIN_WHOLESALE_APPS, ADMIN_WARRANTY_CLAIMS,
   ADMIN_SERVICE_JOBS, ADMIN_ACTIVITY_LOG, ADMIN_LOW_STOCK, formatAudAdmin,
 } from '../data/adminData';
-import { ordersApi, productsApi, tutorialsApi, settingsApi } from '../services/api';
+import { ordersApi, productsApi, tutorialsApi, settingsApi, session } from '../services/api';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Building2,
   ShieldCheck, Wrench, BarChart3, Bell, Search, ChevronRight,
@@ -112,13 +112,19 @@ export const AdminDashboard = ({ onNavigate }) => {
 
   // Product Creation Modal
   const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState({
     name: '',
-    price: '',
+    sku: '',
+    category: 'parts',
+    subcategory: '',
+    price_normal: '',
+    price_wholesale: '',
+    price_agent: '',
     stock: 10,
-    type: 'part',
-    category_id: 1,
-    description: '',
+    short_description: '',
+    full_description: '',
+    visibility_roles: ['normal', 'wholesale', 'agent'],
   });
   const [productImageFile, setProductImageFile] = useState(null);
 
@@ -140,6 +146,11 @@ export const AdminDashboard = ({ onNavigate }) => {
   const [bannerSubmitting, setBannerSubmitting] = useState(false);
 
   useEffect(() => {
+    // Hard guard — the admin dashboard is never reachable without an admin session.
+    if (!session.isAdmin()) {
+      onNavigate('auth');
+      return;
+    }
     loadAllAdminData();
   }, []);
 
@@ -190,34 +201,67 @@ export const AdminDashboard = ({ onNavigate }) => {
   };
 
   // ─────────────────────────────────────────────
-  // Product Creation
+  // Product Creation / Edit
   // ─────────────────────────────────────────────
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     try {
       const fd = new FormData();
       fd.append('name', productForm.name);
-      fd.append('price', productForm.price);
+      fd.append('sku', productForm.sku);
+      fd.append('model_number', productForm.sku);
+      fd.append('category', productForm.category);
+      fd.append('subcategory', productForm.subcategory);
+      fd.append('price_normal', productForm.price_normal);
+      if (productForm.price_wholesale) fd.append('price_wholesale', productForm.price_wholesale);
+      if (productForm.price_agent) fd.append('price_agent', productForm.price_agent);
       fd.append('stock', productForm.stock);
-      fd.append('type', productForm.type);
-      fd.append('category_id', productForm.category_id);
-      fd.append('description', productForm.description);
+      fd.append('short_description', productForm.short_description);
+      fd.append('full_description', productForm.full_description);
+      productForm.visibility_roles.forEach((r) => fd.append('visibility_roles[]', r));
       if (productImageFile) {
         fd.append('image', productImageFile);
       }
 
-      const res = await productsApi.create(fd);
+      const res = editingProduct
+        ? await productsApi.update(editingProduct.id, fd)
+        : await productsApi.create(fd);
+
       if (res.success) {
-        triggerNotice('Product uploaded to database!');
+        triggerNotice(editingProduct ? 'Product updated in the database!' : 'Product uploaded to database!');
         setShowProductModal(false);
-        setProductForm({ name: '', price: '', stock: 10, type: 'part', category_id: 1, description: '' });
+        setEditingProduct(null);
+        setProductForm({
+          name: '', sku: '', category: 'parts', subcategory: '',
+          price_normal: '', price_wholesale: '', price_agent: '',
+          stock: 10, short_description: '', full_description: '',
+          visibility_roles: ['normal', 'wholesale', 'agent'],
+        });
         setProductImageFile(null);
-        loadAllAdminData();
+        await loadAllAdminData();
       }
     } catch (err) {
       console.error(err);
-      triggerNotice('Error uploading product.');
+      triggerNotice(err.message || 'Error saving product.');
     }
+  };
+
+  const openEditProduct = (product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name || '',
+      sku: product.sku || product.model_number || '',
+      category: product.category || 'parts',
+      subcategory: product.subcategory || '',
+      price_normal: product.price_cents ? (product.price_cents / 100).toFixed(2) : '',
+      price_wholesale: product.role_prices?.wholesale ? (product.role_prices.wholesale / 100).toFixed(2) : '',
+      price_agent: product.role_prices?.agent ? (product.role_prices.agent / 100).toFixed(2) : '',
+      stock: product.stock_qty ?? 10,
+      short_description: product.short_description || '',
+      full_description: product.full_description || product.description || '',
+      visibility_roles: product.visibility_roles?.length ? product.visibility_roles : ['normal', 'wholesale', 'agent'],
+    });
+    setShowProductModal(true);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -230,6 +274,7 @@ export const AdminDashboard = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error(err);
+      triggerNotice(err.message || 'Delete failed.');
     }
   };
 
@@ -992,8 +1037,10 @@ export const AdminDashboard = ({ onNavigate }) => {
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-base font-bold text-gray-900">Upload New Hardware / Product</h3>
-              <button onClick={() => setShowProductModal(false)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-base font-bold text-gray-900">
+                {editingProduct ? `Edit Product — ${editingProduct.name}` : 'Upload New Hardware / Product'}
+              </h3>
+              <button onClick={() => { setShowProductModal(false); setEditingProduct(null); }} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1013,14 +1060,12 @@ export const AdminDashboard = ({ onNavigate }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Price (AUD) *</label>
+                  <label className="font-semibold text-gray-700 block mb-1">SKU / Model Number</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={productForm.price}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="e.g. 550.00"
+                    type="text"
+                    value={productForm.sku}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, sku: e.target.value }))}
+                    placeholder="e.g. DH-PMP-T50"
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
                   />
                 </div>
@@ -1038,18 +1083,123 @@ export const AdminDashboard = ({ onNavigate }) => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">Category</label>
+                  <select
+                    value={productForm.category}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                  >
+                    <option value="drones">Commercial Drones</option>
+                    <option value="parts">Genuine Spare Parts</option>
+                    <option value="accessories">Accessories & Payloads</option>
+                    <option value="combos">Turnkey Combos</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">Subcategory</label>
+                  <input
+                    type="text"
+                    value={productForm.subcategory}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, subcategory: e.target.value }))}
+                    placeholder="e.g. Spray Pumps & Nozzles"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">Retail Price (AUD) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={productForm.price_normal}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, price_normal: e.target.value }))}
+                    placeholder="550.00"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">Wholesale Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={productForm.price_wholesale}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, price_wholesale: e.target.value }))}
+                    placeholder="480.00"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-gray-700 block mb-1">Service Agent Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={productForm.price_agent}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, price_agent: e.target.value }))}
+                    placeholder="440.00"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="font-semibold text-gray-700 block mb-1">Type</label>
-                <select
-                  value={productForm.type}
-                  onChange={(e) => setProductForm(prev => ({ ...prev, type: e.target.value }))}
+                <label className="font-semibold text-gray-700 block mb-1">Visible To (customer tiers)</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'normal', label: 'Retail' },
+                    { id: 'wholesale', label: 'Wholesale' },
+                    { id: 'agent', label: 'Service Agent' },
+                  ].map((role) => {
+                    const checked = productForm.visibility_roles.includes(role.id);
+                    return (
+                      <button
+                        type="button"
+                        key={role.id}
+                        onClick={() => {
+                          const has = productForm.visibility_roles.includes(role.id);
+                          const next = has
+                            ? productForm.visibility_roles.filter(r => r !== role.id)
+                            : [...productForm.visibility_roles, role.id];
+                          setProductForm(prev => ({ ...prev, visibility_roles: next.length ? next : [role.id] }));
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${
+                          checked ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {role.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-gray-700 block mb-1">Short Description</label>
+                <input
+                  type="text"
+                  value={productForm.short_description}
+                  onChange={(e) => setProductForm(prev => ({ ...prev, short_description: e.target.value }))}
+                  placeholder="One line summary shown on the product card"
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
-                >
-                  <option value="part">Genuine Spare Part</option>
-                  <option value="drone">Commercial Drone Airframe</option>
-                  <option value="accessory">Payload / Battery</option>
-                  <option value="combo">Combo Bundle</option>
-                </select>
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-gray-700 block mb-1">Full Description</label>
+                <textarea
+                  rows={3}
+                  value={productForm.full_description}
+                  onChange={(e) => setProductForm(prev => ({ ...prev, full_description: e.target.value }))}
+                  placeholder="Detailed technical description"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none"
+                />
               </div>
 
               <div>
@@ -1065,7 +1215,7 @@ export const AdminDashboard = ({ onNavigate }) => {
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={() => setShowProductModal(false)}
+                  onClick={() => { setShowProductModal(false); setEditingProduct(null); }}
                   className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-semibold"
                 >
                   Cancel
@@ -1074,7 +1224,7 @@ export const AdminDashboard = ({ onNavigate }) => {
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md"
                 >
-                  Save & Publish Product
+                  {editingProduct ? 'Save Changes' : 'Save & Publish Product'}
                 </button>
               </div>
             </form>

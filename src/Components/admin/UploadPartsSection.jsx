@@ -4,7 +4,7 @@ import { formatAud } from '../../data/products';
 import {
   Wrench, Upload, Download, Plus, Trash2, FileSpreadsheet,
   CheckCircle2, AlertCircle, ShieldCheck, Tag, DollarSign,
-  Layers, Box, Plane
+  Layers, Box, Plane, Pencil, Save, RefreshCw
 } from 'lucide-react';
 
 export const UploadPartsSection = () => {
@@ -12,6 +12,8 @@ export const UploadPartsSection = () => {
   const [dronesList, setDronesList] = useState([]);
   const [partCategories, setPartCategories] = useState([]);
   const [notice, setNotice] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State
   const [form, setForm] = useState({
@@ -36,21 +38,40 @@ export const UploadPartsSection = () => {
   const [excelFile, setExcelFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
   const [parseError, setParseError] = useState('');
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const reload = () => {
-      const all = productStore.getAll();
-      setParts(all.filter(p => p.category === 'parts'));
-      setDronesList(productStore.getDroneList());
-
-      const cats = categoryStore.getByType('part');
-      setPartCategories(cats);
+    const reload = async () => {
+      try {
+        const all = await productStore.getAll();
+        setParts(all.filter(p => p.category === 'parts'));
+        setDronesList(productStore.getDroneList());
+      } catch (err) {
+        triggerNotice('Could not load the parts catalogue: ' + err.message, 'error');
+      }
     };
-    reload();
 
-    const unsubP = productStore.subscribe(reload);
-    const unsubC = categoryStore.subscribe(reload);
+    const reloadCategories = async () => {
+      try {
+        await categoryStore.getAll();
+        setPartCategories(categoryStore.getByType('part'));
+      } catch (err) {
+        /* non critical */
+      }
+    };
+
+    reload();
+    reloadCategories();
+
+    const unsubP = productStore.subscribe((updated) => {
+      const list = updated || [];
+      setParts(list.filter(p => p.category === 'parts'));
+      setDronesList(productStore.getDroneList());
+    });
+    const unsubC = categoryStore.subscribe((updated) => {
+      setPartCategories((updated || []).filter(c => c.type === 'part'));
+    });
     return () => {
       unsubP();
       unsubC();
@@ -95,12 +116,14 @@ export const UploadPartsSection = () => {
     calculatedSalePrice = Math.max(0, normalPriceNum - discountValNum);
   }
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.price_normal) {
       triggerNotice('Please provide part name and normal price.', 'error');
       return;
     }
+
+    setSubmitting(true);
 
     try {
       const normalCents = Math.round(normalPriceNum * 100);
@@ -108,10 +131,12 @@ export const UploadPartsSection = () => {
       const agentCents = Math.round((parseFloat(form.price_agent) || normalPriceNum * 0.80) * 100);
       const saleCents = Math.round(calculatedSalePrice * 100);
 
+      const sku = form.sku.trim() || editing?.sku || `DH-PRT-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const newPart = {
         name: form.name.trim(),
-        model_number: form.sku.trim() || `DH-PRT-${Math.floor(1000 + Math.random() * 9000)}`,
-        sku: form.sku.trim() || `DH-PRT-${Math.floor(1000 + Math.random() * 9000)}`,
+        model_number: sku,
+        sku: sku,
         category: 'parts',
         subcategory: form.part_section,
         brand: 'DJI Genuine Spares',
@@ -133,30 +158,63 @@ export const UploadPartsSection = () => {
         image_url: form.image_url.trim(),
       };
 
-      productStore.add(newPart);
-      triggerNotice(`Part "${form.name}" uploaded successfully!`);
+      if (editing) {
+        await productStore.update(editing.id, newPart);
+        triggerNotice(`Part "${newPart.name}" updated successfully!`);
+      } else {
+        await productStore.add(newPart);
+        triggerNotice(`Part "${newPart.name}" uploaded successfully!`);
+      }
 
-      // Reset
-      setForm({
-        name: '',
-        sku: '',
-        drone_name: dronesList[0]?.name || 'DJI Agras T100',
-        part_section: 'Propellers & Blades',
-        subcategory: 'Propellers & Blades',
-        price_normal: '',
-        price_wholesale: '',
-        price_agent: '',
-        discount_type: 'none',
-        discount_value: '',
-        stock: 20,
-        short_description: '',
-        full_description: '',
-        image_url: '',
-        visibility_roles: ['normal', 'wholesale', 'agent'],
-      });
+      resetForm();
     } catch (err) {
-      triggerNotice('Failed to upload part: ' + err.message, 'error');
+      triggerNotice('Failed to save part: ' + err.message, 'error');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const openEdit = (part) => {
+    setEditing(part);
+    setForm({
+      name: part.name || '',
+      sku: part.sku || part.model_number || '',
+      drone_name: part.drone_name || dronesList[0]?.name || 'DJI Agras T100',
+      part_section: part.part_section || part.subcategory || 'Propellers & Blades',
+      subcategory: part.subcategory || part.part_section || 'Propellers & Blades',
+      price_normal: part.price_cents ? (part.price_cents / 100).toFixed(2) : '',
+      price_wholesale: part.role_prices?.wholesale ? (part.role_prices.wholesale / 100).toFixed(2) : '',
+      price_agent: part.role_prices?.agent ? (part.role_prices.agent / 100).toFixed(2) : '',
+      discount_type: part.discount_type || 'none',
+      discount_value: part.discount_value || 0,
+      stock: part.stock_qty ?? 20,
+      short_description: part.short_description || '',
+      full_description: part.full_description || part.description || '',
+      image_url: part.image_url || '',
+      visibility_roles: part.visibility_roles?.length ? part.visibility_roles : ['normal', 'wholesale', 'agent'],
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditing(null);
+    setForm({
+      name: '',
+      sku: '',
+      drone_name: dronesList[0]?.name || 'DJI Agras T100',
+      part_section: 'Propellers & Blades',
+      subcategory: 'Propellers & Blades',
+      price_normal: '',
+      price_wholesale: '',
+      price_agent: '',
+      discount_type: 'none',
+      discount_value: '',
+      stock: 20,
+      short_description: '',
+      full_description: '',
+      image_url: '',
+      visibility_roles: ['normal', 'wholesale', 'agent'],
+    });
   };
 
   // Excel handlers
@@ -185,23 +243,30 @@ export const UploadPartsSection = () => {
     }
   };
 
-  const handleConfirmExcelImport = () => {
-    if (parsedRows.length === 0) return;
+  const handleConfirmExcelImport = async () => {
+    if (!excelFile) return;
+    setImporting(true);
     try {
-      productStore.addBatch(parsedRows);
-      triggerNotice(`Imported ${parsedRows.length} parts successfully!`);
+      const res = await productStore.addBatch(excelFile, 'parts');
+      const extra = res?.errors?.length ? ` (${res.errors.length} row(s) skipped)` : '';
+      triggerNotice(`Imported ${res?.imported ?? parsedRows.length} parts successfully!${extra}`);
       setExcelFile(null);
       setParsedRows([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       triggerNotice('Import failed: ' + err.message, 'error');
+    } finally {
+      setImporting(false);
     }
   };
 
-  const handleDeletePart = (id, name) => {
-    if (window.confirm(`Delete part "${name}" from store catalog?`)) {
-      productStore.delete(id);
+  const handleDeletePart = async (id, name) => {
+    if (!window.confirm(`Delete part "${name}" from store catalog?`)) return;
+    try {
+      await productStore.delete(id);
       triggerNotice(`Deleted "${name}"`);
+    } catch (err) {
+      triggerNotice('Delete failed: ' + err.message, 'error');
     }
   };
 
@@ -284,10 +349,11 @@ export const UploadPartsSection = () => {
               </button>
               <button
                 onClick={handleConfirmExcelImport}
-                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                disabled={importing}
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-300 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Import ({parsedRows.length} Parts)</span>
+                {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span>{importing ? 'Importing...' : `Confirm & Import (${parsedRows.length} Parts)`}</span>
               </button>
             </div>
           </div>
@@ -328,8 +394,17 @@ export const UploadPartsSection = () => {
         <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
           <Wrench className="w-5 h-5 text-amber-600" />
           <h3 className="text-lg font-bold text-gray-900">
-            Single Spare Part Manual Upload Form
+            {editing ? `Edit Spare Part — ${editing.name}` : 'Single Spare Part Manual Upload Form'}
           </h3>
+          {editing && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="ml-auto px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleFormSubmit} className="space-y-6">
@@ -601,10 +676,19 @@ export const UploadPartsSection = () => {
           <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/20 transition-all flex items-center gap-2"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:bg-gray-300 text-white font-bold text-xs shadow-md shadow-amber-600/20 transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
-              <span>Upload Part to Catalog</span>
+              {submitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : editing ? (
+                <Save className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              <span>
+                {submitting ? 'Saving...' : editing ? 'Save Changes' : 'Upload Part to Catalog'}
+              </span>
             </button>
           </div>
         </form>
@@ -633,7 +717,7 @@ export const UploadPartsSection = () => {
                 <th className="py-3 px-3">Wholesale Price</th>
                 <th className="py-3 px-3">Agent Price</th>
                 <th className="py-3 px-3">Stock</th>
-                <th className="py-3 px-3 text-right">Delete</th>
+                <th className="py-3 px-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -675,13 +759,22 @@ export const UploadPartsSection = () => {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => handleDeletePart(p.id, p.name)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Delete Part"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(p)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                        title="Edit Part"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePart(p.id, p.name)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Delete Part"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
