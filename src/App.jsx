@@ -11,6 +11,9 @@ import { Contact } from './pages/Contact';
 import { Auth } from './pages/Auth';
 import { Cart } from './pages/Cart';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { About } from './pages/About';
+import { Industries } from './pages/Industries';
+import { Projects } from './pages/Projects';
 
 export const App = () => {
   const [currentPage, setCurrentPage] = useState('home');
@@ -152,6 +155,18 @@ export const App = () => {
             onClearCart={() => setCart([])}
             onNavigate={handleNavigate}
           />
+        )}
+
+        {currentPage === 'about' && (
+          <About onNavigate={handleNavigate} />
+        )}
+
+        {currentPage === 'industries' && (
+          <Industries onNavigate={handleNavigate} />
+        )}
+
+        {currentPage === 'projects' && (
+          <Projects onNavigate={handleNavigate} />
         )}
       </main>
 

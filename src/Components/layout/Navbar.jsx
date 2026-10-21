@@ -36,11 +36,11 @@ export const Navbar = ({
 
   const navLinks = [
     { id: 'home', label: 'Home' },
+    { id: 'industries', label: 'Industries' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'about', label: 'About' },
     { id: 'services', label: 'Services' },
     { id: 'products-drones', label: 'Drones', category: 'drones' },
-    { id: 'products-parts', label: 'Parts', category: 'parts' },
-    { id: 'products-accessories', label: 'Accessories', category: 'accessories' },
-    { id: 'products-combos', label: 'Combos', category: 'combos' },
     { id: 'tutorials', label: 'Flight Academy' },
     { id: 'contact', label: 'Contact Us' },
   ];
@@ -60,6 +60,9 @@ export const Navbar = ({
     if (link.id === 'services') return currentPage === 'services';
     if (link.id === 'contact') return currentPage === 'contact';
     if (link.id === 'tutorials') return currentPage === 'tutorials';
+    if (link.id === 'about') return currentPage === 'about';
+    if (link.id === 'industries') return currentPage === 'industries';
+    if (link.id === 'projects') return currentPage === 'projects';
     if (link.category) {
       return currentPage === 'products' && selectedCategory === link.category;
     }
