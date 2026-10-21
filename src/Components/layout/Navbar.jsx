@@ -36,6 +36,7 @@ export const Navbar = ({
 
   const navLinks = [
     { id: 'home', label: 'Home' },
+    { id: 'shop', label: 'Shop' },
     { id: 'industries', label: 'Industries' },
     { id: 'projects', label: 'Projects' },
     { id: 'about', label: 'About' },
@@ -48,7 +49,7 @@ export const Navbar = ({
   const handleNavClick = (link) => {
     if (link.category) {
       onSelectCategory(link.category);
-      onNavigate('products');
+      onNavigate('shop');
     } else {
       onNavigate(link.id);
     }
@@ -57,6 +58,7 @@ export const Navbar = ({
 
   const isActive = (link) => {
     if (link.id === 'home') return currentPage === 'home';
+    if (link.id === 'shop') return currentPage === 'shop' && selectedCategory === 'all';
     if (link.id === 'services') return currentPage === 'services';
     if (link.id === 'contact') return currentPage === 'contact';
     if (link.id === 'tutorials') return currentPage === 'tutorials';
@@ -64,7 +66,7 @@ export const Navbar = ({
     if (link.id === 'industries') return currentPage === 'industries';
     if (link.id === 'projects') return currentPage === 'projects';
     if (link.category) {
-      return currentPage === 'products' && selectedCategory === link.category;
+      return (currentPage === 'shop' || currentPage === 'products') && selectedCategory === link.category;
     }
     return false;
   };

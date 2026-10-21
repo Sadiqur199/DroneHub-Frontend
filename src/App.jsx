@@ -14,6 +14,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { About } from './pages/About';
 import { Industries } from './pages/Industries';
 import { Projects } from './pages/Projects';
+import { Shop } from './pages/Shop';
 
 export const App = () => {
   const [currentPage, setCurrentPage] = useState('home');
@@ -109,10 +110,19 @@ export const App = () => {
           />
         )}
 
+        {currentPage === 'shop' && (
+          <Shop
+            initialCategory={selectedCategory}
+            onNavigate={handleNavigate}
+            onSelectProduct={handleSelectProduct}
+            onAddToCart={handleAddToCart}
+          />
+        )}
+
         {currentPage === 'products' && (
-          <Products
-            selectedCategory={selectedCategory}
-            onSelectCategory={handleSelectCategory}
+          <Shop
+            initialCategory={selectedCategory}
+            onNavigate={handleNavigate}
             onSelectProduct={handleSelectProduct}
             onAddToCart={handleAddToCart}
           />

@@ -15,6 +15,7 @@ import {
   Check, ChevronDown, RefreshCw, Video, Upload, Plus, Trash2,
   ExternalLink, Sparkles, Play
 } from 'lucide-react';
+import { CategoryExcelManager } from '../Components/admin/CategoryExcelManager';
 
 // ─────────────────────────────────────────────
 // Sidebar Navigation Items
@@ -651,15 +652,16 @@ export const AdminDashboard = ({ onNavigate }) => {
           )}
 
           {/* ========================================================= */}
-          {/* SECTION: PRODUCTS & INVENTORY (REAL DATABASE CRUD) */}
+          {/* ========================================================= */}
+          {/* SECTION: PRODUCTS & INVENTORY (EXCEL BATCH & CATEGORY CRUD) */}
           {/* ========================================================= */}
           {activeSection === 'products' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Hardware Catalog & Spares Control</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Hardware Catalog & Excel Inventory Manager</h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Manage commercial drones, batteries, nozzles, and payloads loaded dynamically from database.
+                    Upload via category-specific Excel spreadsheets, export demo templates, and manage stock or delete products.
                   </p>
                 </div>
 
@@ -669,66 +671,17 @@ export const AdminDashboard = ({ onNavigate }) => {
                     className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Upload New Product</span>
+                    <span>Manual Add Single Product</span>
                   </button>
                 </div>
               </div>
 
-              {/* Product List Table */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-500 font-semibold">
-                      <th className="pb-3">Image</th>
-                      <th className="pb-3">SKU</th>
-                      <th className="pb-3">Product Name</th>
-                      <th className="pb-3">Type / Category</th>
-                      <th className="pb-3">Price (AUD)</th>
-                      <th className="pb-3">Stock Units</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {products.map((prod) => (
-                      <tr key={prod.id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="py-3">
-                          <img
-                            src={prod.image_url || '/drone.png'}
-                            alt={prod.name}
-                            className="w-10 h-10 object-contain rounded-lg border border-gray-200 bg-gray-50 p-1"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = '/drone.png';
-                            }}
-                          />
-                        </td>
-                        <td className="py-3 font-mono text-gray-500">{prod.sku}</td>
-                        <td className="py-3 font-semibold text-gray-900">{prod.name}</td>
-                        <td className="py-3 capitalize text-gray-500">{prod.category || prod.type}</td>
-                        <td className="py-3 font-mono font-bold text-gray-900">{prod.price_formatted}</td>
-                        <td className="py-3 font-mono font-semibold">
-                          <span className={prod.stock <= 5 ? 'text-amber-600' : 'text-gray-900'}>
-                            {prod.stock} in stock
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <StatusBadge status={prod.stock > 0 ? 'Active' : 'Out of Stock'} />
-                        </td>
-                        <td className="py-3 text-right">
-                          <button
-                            onClick={() => handleDeleteProduct(prod.id)}
-                            className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                            title="Delete Product"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {/* Category Excel Manager with Drones, Accessories, Parts, Combos tabs */}
+              <CategoryExcelManager
+                onProductsChanged={(updated) => {
+                  setProducts(updated);
+                }}
+              />
             </div>
           )}
 
