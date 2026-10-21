@@ -41,8 +41,8 @@ export const Navbar = ({
     { id: 'projects', label: 'Projects' },
     { id: 'about', label: 'About' },
     { id: 'services', label: 'Services' },
-    { id: 'products-drones', label: 'Drones', category: 'drones' },
-    { id: 'tutorials', label: 'Flight Academy' },
+    // { id: 'products-drones', label: 'Drones', category: 'drones' },
+    // { id: 'tutorials', label: 'Flight Academy' },
     { id: 'contact', label: 'Contact Us' },
   ];
 
@@ -138,18 +138,18 @@ export const Navbar = ({
           {/* Right Actions */}
           <div className="flex items-center gap-2.5">
             {/* User Login / Admin Button */}
+            {/* Quick Admin Shortcut & User Actions */}
+            <button
+              onClick={() => onNavigate('admin')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all"
+              title="Open Admin Dashboard"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Admin</span>
+            </button>
+
             {user ? (
               <div className="flex items-center gap-2">
-                {user.is_admin && (
-                  <button
-                    onClick={() => onNavigate('admin')}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Admin Panel</span>
-                  </button>
-                )}
-
                 <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-200">
                   <User className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="font-semibold">{user.name.split(' ')[0]}</span>

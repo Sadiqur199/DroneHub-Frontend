@@ -1,16 +1,38 @@
 import React, { useState } from 'react';
 import { formatAud, calculateGst } from '../../data/products';
-import { ShoppingBag, ArrowRight, Trash2, ShieldCheck, Box, Tag } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Trash2, ShieldCheck, Box, Tag, Plane, Percent } from 'lucide-react';
 
 export const ShopProductCard = ({
   product,
   onSelect,
   onAddToCart,
   onDelete,
-  isAdmin = false
+  isAdmin = false,
+  activeRole = 'normal', // 'normal', 'wholesale', 'agent'
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
-  const gstCents = calculateGst(product.price_cents || 0);
+
+  // Determine effective price based on active role
+  let basePriceCents = product.price_cents || 0;
+  let roleLabel = 'Retail Price';
+
+  if (activeRole === 'wholesale' && product.role_prices?.wholesale) {
+    basePriceCents = product.role_prices.wholesale;
+    roleLabel = 'Wholesale (ABN) Price';
+  } else if (activeRole === 'agent' && product.role_prices?.agent) {
+    basePriceCents = product.role_prices.agent;
+    roleLabel = 'Service Agent Price';
+  }
+
+  // Check discount
+  const hasDiscount = (product.discount_type && product.discount_type !== 'none' && product.discount_value > 0) ||
+                      (product.sale_price_cents && product.sale_price_cents < basePriceCents && activeRole === 'normal');
+
+  const finalPriceCents = hasDiscount && activeRole === 'normal'
+    ? (product.sale_price_cents || basePriceCents)
+    : basePriceCents;
+
+  const gstCents = calculateGst(finalPriceCents);
 
   // Check if image is valid or should be black placeholder
   const hasValidImage = product.image_url && String(product.image_url).trim() !== '' && !imageFailed;
@@ -71,7 +93,7 @@ export const ShopProductCard = ({
               No Image Provided
             </span>
             <span className="text-[10px] text-slate-700 font-mono mt-0.5">
-              {product.sku || 'Official DroneHub Item'}
+              {product.model_number || product.sku || 'Official DroneHub Item'}
             </span>
           </div>
         )}
@@ -84,6 +106,16 @@ export const ShopProductCard = ({
           <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border backdrop-blur-md ${getCategoryColor(product.category)}`}>
             {product.category}
           </span>
+          {hasDiscount && (
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 backdrop-blur-md flex items-center gap-0.5">
+              <Percent className="w-2.5 h-2.5" />
+              <span>
+                {product.discount_type === 'percentage'
+                  ? `${product.discount_value}% OFF`
+                  : 'DISCOUNT'}
+              </span>
+            </span>
+          )}
         </div>
 
         {/* Stock Status Badge (Bottom of Image) */}
@@ -104,14 +136,24 @@ export const ShopProductCard = ({
       {/* Content Area */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div>
-          {/* Subcategory & SKU */}
+          {/* Subcategory & Drone Association */}
           <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1.5">
             <span className="flex items-center gap-1 text-cyan-400/90 truncate max-w-[65%]">
               <Tag className="w-3 h-3 shrink-0" />
-              <span className="truncate">{product.subcategory || 'General'}</span>
+              <span className="truncate">{product.subcategory || product.part_section || 'General'}</span>
             </span>
-            <span className="text-slate-500 shrink-0">{product.sku}</span>
+            <span className="text-slate-500 shrink-0">{product.model_number || product.sku}</span>
           </div>
+
+          {/* Linked Drone Name badge (for parts and accessories) */}
+          {product.drone_name && product.drone_name !== 'Universal / All Airframes' && (
+            <div className="mb-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700 text-[10px] font-semibold text-cyan-300">
+                <Plane className="w-2.5 h-2.5" />
+                <span className="truncate max-w-[200px]">For: {product.drone_name}</span>
+              </span>
+            </div>
+          )}
 
           {/* Product Title */}
           <h3
@@ -123,7 +165,7 @@ export const ShopProductCard = ({
 
           {/* Short Description */}
           <p className="text-xs text-slate-400 line-clamp-2 mt-2 leading-relaxed">
-            {product.short_description || product.description || 'Enterprise grade commercial drone hardware backed by DroneHub Australia priority workshop support.'}
+            {product.short_description || product.full_description || product.description || 'Enterprise grade commercial drone hardware backed by DroneHub Australia priority workshop support.'}
           </p>
 
           {/* Spec or Flight Time highlight */}
@@ -138,11 +180,24 @@ export const ShopProductCard = ({
         {/* Price & Actions Area */}
         <div className="pt-4 border-t border-slate-800/80 space-y-3">
           <div>
-            <div className="text-xl font-bold text-white tracking-tight font-mono">
-              {formatAud(product.price_cents || 0)}
+            <div className="flex items-baseline gap-2">
+              <div className="text-xl font-bold text-white tracking-tight font-mono">
+                {formatAud(finalPriceCents)}
+              </div>
+              {hasDiscount && activeRole === 'normal' && (
+                <div className="text-xs line-through text-slate-500 font-mono">
+                  {formatAud(basePriceCents)}
+                </div>
+              )}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              Includes 10% GST ({formatAud(gstCents)})
+            
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-0.5">
+              <span>Includes 10% GST ({formatAud(gstCents)})</span>
+              {activeRole !== 'normal' && (
+                <span className="font-semibold text-cyan-400 font-mono text-[10px] bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/60">
+                  {roleLabel}
+                </span>
+              )}
             </div>
           </div>
 

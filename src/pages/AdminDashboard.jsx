@@ -13,9 +13,13 @@ import {
   CircleDot, Activity, DollarSign, UserPlus, PackageCheck,
   ClipboardList, Settings, LogOut, Menu, X, Filter, Download,
   Check, ChevronDown, RefreshCw, Video, Upload, Plus, Trash2,
-  ExternalLink, Sparkles, Play
+  ExternalLink, Sparkles, Play, Plane, FolderTree, Battery
 } from 'lucide-react';
 import { CategoryExcelManager } from '../Components/admin/CategoryExcelManager';
+import { UploadDroneSection } from '../Components/admin/UploadDroneSection';
+import { UploadPartsSection } from '../Components/admin/UploadPartsSection';
+import { UploadAccessoriesSection } from '../Components/admin/UploadAccessoriesSection';
+import { CategoryManager } from '../Components/admin/CategoryManager';
 
 // ─────────────────────────────────────────────
 // Sidebar Navigation Items
@@ -23,6 +27,10 @@ import { CategoryExcelManager } from '../Components/admin/CategoryExcelManager';
 const NAV_ITEMS = [
   { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'orders', label: 'Orders & Documents', icon: ShoppingCart },
+  { id: 'upload-drone', label: 'Upload Drone', icon: Plane },
+  { id: 'upload-parts', label: 'Upload Parts', icon: Wrench },
+  { id: 'upload-accessories', label: 'Upload Accessories', icon: Battery },
+  { id: 'categories', label: 'Categories & Subcategories', icon: FolderTree },
   { id: 'products', label: 'Products & Inventory', icon: Package },
   { id: 'tutorials', label: 'Tutorials & Guides', icon: Video },
   { id: 'banner', label: 'Home Banner Setup', icon: Sparkles },
@@ -652,6 +660,33 @@ export const AdminDashboard = ({ onNavigate }) => {
           )}
 
           {/* ========================================================= */}
+          {/* SECTION: UPLOAD DRONE */}
+          {/* ========================================================= */}
+          {activeSection === 'upload-drone' && (
+            <UploadDroneSection />
+          )}
+
+          {/* ========================================================= */}
+          {/* SECTION: UPLOAD PARTS */}
+          {/* ========================================================= */}
+          {activeSection === 'upload-parts' && (
+            <UploadPartsSection />
+          )}
+
+          {/* ========================================================= */}
+          {/* SECTION: UPLOAD ACCESSORIES */}
+          {/* ========================================================= */}
+          {activeSection === 'upload-accessories' && (
+            <UploadAccessoriesSection />
+          )}
+
+          {/* ========================================================= */}
+          {/* SECTION: CATEGORIES & SUBCATEGORIES MANAGER */}
+          {/* ========================================================= */}
+          {activeSection === 'categories' && (
+            <CategoryManager />
+          )}
+
           {/* ========================================================= */}
           {/* SECTION: PRODUCTS & INVENTORY (EXCEL BATCH & CATEGORY CRUD) */}
           {/* ========================================================= */}

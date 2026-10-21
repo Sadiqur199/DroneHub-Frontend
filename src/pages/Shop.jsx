@@ -113,16 +113,26 @@ export const Shop = ({
     return [{ id: 'all', label: 'All Subcategories', count: scoped.length }, ...list];
   }, [products, selectedCategory]);
 
+  const [activeUserRole, setActiveUserRole] = useState('all'); // 'all', 'normal', 'wholesale', 'agent'
+
   // Filtered & Sorted Products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      // 0. Role-based visibility filter
+      if (activeUserRole !== 'all') {
+        const roles = p.visibility_roles || ['normal', 'wholesale', 'agent'];
+        if (!roles.includes(activeUserRole)) {
+          return false;
+        }
+      }
+
       // 1. Category filter
       if (selectedCategory !== 'all' && p.category !== selectedCategory) {
         return false;
       }
 
       // 2. Subcategory filter
-      if (selectedSubcategory !== 'all' && (p.subcategory || 'General') !== selectedSubcategory) {
+      if (selectedSubcategory !== 'all' && (p.subcategory || p.part_section || 'General') !== selectedSubcategory) {
         return false;
       }
 
@@ -130,10 +140,11 @@ export const Shop = ({
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesName = (p.name || '').toLowerCase().includes(q);
-        const matchesSku = (p.sku || '').toLowerCase().includes(q);
+        const matchesSku = (p.sku || p.model_number || '').toLowerCase().includes(q);
         const matchesBrand = (p.brand || '').toLowerCase().includes(q);
-        const matchesSub = (p.subcategory || '').toLowerCase().includes(q);
-        if (!matchesName && !matchesSku && !matchesBrand && !matchesSub) {
+        const matchesSub = (p.subcategory || p.part_section || '').toLowerCase().includes(q);
+        const matchesDrone = (p.drone_name || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesSku && !matchesBrand && !matchesSub && !matchesDrone) {
           return false;
         }
       }
@@ -144,7 +155,13 @@ export const Shop = ({
       }
 
       // 5. Price range filter
-      const priceAud = (p.price_cents || 0) / 100;
+      const effectivePrice = activeUserRole === 'wholesale' && p.role_prices?.wholesale
+        ? p.role_prices.wholesale
+        : activeUserRole === 'agent' && p.role_prices?.agent
+        ? p.role_prices.agent
+        : (p.sale_price_cents || p.price_cents || 0);
+
+      const priceAud = effectivePrice / 100;
       if (priceRange === 'under500' && priceAud >= 500) return false;
       if (priceRange === '500-2k' && (priceAud < 500 || priceAud > 2000)) return false;
       if (priceRange === '2k-10k' && (priceAud < 2000 || priceAud > 10000)) return false;
@@ -152,18 +169,24 @@ export const Shop = ({
 
       return true;
     }).sort((a, b) => {
+      const getPrice = (item) => {
+        if (activeUserRole === 'wholesale' && item.role_prices?.wholesale) return item.role_prices.wholesale;
+        if (activeUserRole === 'agent' && item.role_prices?.agent) return item.role_prices.agent;
+        return item.sale_price_cents || item.price_cents || 0;
+      };
+
       if (sortBy === 'price-low') {
-        return (a.price_cents || 0) - (b.price_cents || 0);
+        return getPrice(a) - getPrice(b);
       }
       if (sortBy === 'price-high') {
-        return (b.price_cents || 0) - (a.price_cents || 0);
+        return getPrice(b) - getPrice(a);
       }
       if (sortBy === 'name-asc') {
         return (a.name || '').localeCompare(b.name || '');
       }
       return 0; // default order
     });
-  }, [products, selectedCategory, selectedSubcategory, searchQuery, inStockOnly, priceRange, sortBy]);
+  }, [products, selectedCategory, selectedSubcategory, searchQuery, inStockOnly, priceRange, sortBy, activeUserRole]);
 
   // Pagination calculation (10 products per page as requested)
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
@@ -273,6 +296,34 @@ export const Shop = ({
               <Filter className="w-4 h-4" />
               <span>Filter Categories ({filteredProducts.length})</span>
             </button>
+          </div>
+
+          {/* User Tier & Pricing Mode Selector */}
+          <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
+              Viewing As:
+            </span>
+            {[
+              { id: 'all', label: 'Full Catalog (All Tiers)' },
+              { id: 'normal', label: 'Retail Customer' },
+              { id: 'wholesale', label: 'Wholesale Dealer (ABN)' },
+              { id: 'agent', label: 'Service Partner Agent' },
+            ].map((tier) => (
+              <button
+                key={tier.id}
+                onClick={() => {
+                  setActiveUserRole(tier.id);
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 rounded-lg text-xs transition-all font-semibold ${
+                  activeUserRole === tier.id
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80'
+                }`}
+              >
+                {tier.label}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -507,6 +558,7 @@ export const Shop = ({
                     onAddToCart={onAddToCart}
                     onDelete={handleDeleteProduct}
                     isAdmin={isAdminMode}
+                    activeRole={activeUserRole === 'all' ? 'normal' : activeUserRole}
                   />
                 ))}
               </div>
