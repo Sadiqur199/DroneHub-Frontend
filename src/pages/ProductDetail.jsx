@@ -60,7 +60,7 @@ export const ProductDetail = ({ product, onNavigate, onAddToCart, onSelectProduc
   };
 
   return (
-    <div className="w-full bg-[#0F172A] text-slate-100 min-h-screen py-8 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
+    <div className="w-full bg-[#05080F] text-slate-100 min-h-screen py-8 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 text-xs text-slate-400">
         <button onClick={() => onNavigate('home')} className="hover:text-cyan-400 transition-colors">Home</button>

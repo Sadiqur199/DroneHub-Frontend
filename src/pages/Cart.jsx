@@ -124,7 +124,7 @@ export const Cart = ({ cart, onUpdateQty, onRemoveItem, onClearCart, onNavigate 
   };
 
   return (
-    <div className="w-full bg-[#0F172A] text-slate-100 min-h-screen py-10 px-4 sm:px-8">
+    <div className="w-full bg-[#05080F] text-slate-100 min-h-screen py-10 px-4 sm:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-6 shadow-xl backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">

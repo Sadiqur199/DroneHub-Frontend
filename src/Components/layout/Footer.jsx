@@ -6,7 +6,7 @@ import {
 
 export const Footer = ({ onNavigate, onSelectCategory }) => {
   return (
-    <footer className="w-full bg-[#0F172A] border-t border-slate-800 text-slate-400 text-sm mt-auto">
+    <footer className="w-full bg-[#05080F] border-t border-slate-800 text-slate-400 text-sm mt-auto">
       {/* Australian Assurance Bar */}
       <div className="w-full border-b border-slate-800/80 bg-slate-900/60 py-8 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

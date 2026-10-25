@@ -6,11 +6,11 @@ export const ProductCard = ({ product, onSelect, onAddToCart }) => {
   const gstCents = calculateGst(product.price_cents);
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700/70 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/5 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col justify-between group backdrop-blur-sm">
+    <div className="bg-[#0C1424] border border-slate-800/80 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/5 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col justify-between group backdrop-blur-sm">
       {/* Product Image Area */}
       <div 
         onClick={() => onSelect(product)}
-        className="relative h-60 w-full overflow-hidden bg-slate-900/80 flex items-center justify-center cursor-pointer p-4"
+        className="relative h-60 w-full overflow-hidden bg-[#070D19] flex items-center justify-center cursor-pointer p-4 border-b border-slate-800/60"
       >
         <img 
           src={product.image_url} 

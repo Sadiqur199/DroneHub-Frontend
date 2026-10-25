@@ -75,9 +75,9 @@ export const CustomerDashboard = ({ onNavigate }) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 pb-24">
+    <div className="min-h-screen bg-[#05080F] text-slate-100 pb-24">
       {/* Header */}
-      <section className="border-b border-slate-800 bg-gradient-to-b from-slate-950 to-[#0F172A] px-4 sm:px-8 py-10">
+      <section className="border-b border-slate-800 bg-gradient-to-b from-slate-950 to-[#05080F] px-4 sm:px-8 py-10">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">

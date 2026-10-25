@@ -63,7 +63,7 @@ export const FleetHardwareMatrix = ({
               className={`group text-left p-3 rounded-2xl border transition-all duration-200 relative flex flex-col justify-between ${
                 isActive
                   ? 'bg-cyan-950/70 border-cyan-500 ring-2 ring-cyan-500/30 shadow-md shadow-cyan-950/50'
-                  : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600 hover:bg-slate-800 shadow-xs'
+                  : 'bg-[#0C1424] border-slate-800/80 hover:border-slate-700 hover:bg-[#101A2E] shadow-xs'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-2">
@@ -101,7 +101,7 @@ export const FleetHardwareMatrix = ({
       </div>
 
       {/* 2. Interactive Fleet Hardware Showcase Container */}
-      <div className="bg-slate-800/60 rounded-3xl border border-slate-700/70 shadow-xl overflow-hidden backdrop-blur-sm">
+        <div className="bg-[#0A111F] rounded-3xl border border-slate-800/80 shadow-xl overflow-hidden backdrop-blur-sm">
         
         {/* Showcase Top Control Bar */}
         <div className="bg-slate-900/80 border-b border-slate-700/60 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -247,7 +247,7 @@ export const FleetHardwareMatrix = ({
                 return (
                   <div
                     key={item.id}
-                    className="bg-slate-900/70 border border-slate-700/70 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/5 transition-all duration-200 rounded-2xl p-4 flex flex-col justify-between group backdrop-blur-xs"
+                    className="bg-[#0C1424] border border-slate-800/80 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/5 transition-all duration-200 rounded-2xl p-4 flex flex-col justify-between group backdrop-blur-xs"
                   >
                     {/* Item Image */}
                     <div 

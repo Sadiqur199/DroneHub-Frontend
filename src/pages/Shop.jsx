@@ -250,7 +250,7 @@ export const Shop = ({
   };
 
   return (
-    <div className="bg-[#0F172A] min-h-screen text-slate-100 pb-24">
+    <div className="bg-[#05080F] min-h-screen text-slate-100 pb-24">
       {/* Delete Feedback Toast */}
       {deleteToast && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-rose-950 border border-rose-700 text-rose-200 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -272,7 +272,7 @@ export const Shop = ({
       )}
 
       {/* Top Hero / Header Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-[#0F172A] border-b border-slate-800/80 pt-10 pb-12 px-4 sm:px-8">
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-[#05080F] border-b border-slate-800/80 pt-10 pb-12 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

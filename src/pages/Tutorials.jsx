@@ -43,7 +43,7 @@ export const Tutorials = ({ onNavigate }) => {
   return (
     <div
       className="w-full min-h-screen py-10 px-4 sm:px-8 text-slate-100 selection:bg-cyan-500 selection:text-white relative overflow-hidden"
-      style={{ backgroundColor: '#0F172A' }}
+      style={{ backgroundColor: '#05080F' }}
     >
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/3 w-[500px] h-[300px] bg-blue-600/10 rounded-full blur-[130px] pointer-events-none" />

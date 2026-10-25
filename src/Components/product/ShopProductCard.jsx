@@ -68,7 +68,7 @@ export const ShopProductCard = ({
   };
 
   return (
-    <div className="bg-slate-900/70 border border-slate-800 hover:border-cyan-500/40 hover:shadow-2xl hover:shadow-cyan-500/5 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col justify-between group backdrop-blur-md relative">
+    <div className="bg-[#0C1424] border border-slate-800/80 hover:border-cyan-500/40 hover:shadow-2xl hover:shadow-cyan-500/5 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col justify-between group backdrop-blur-md relative">
       {/* Admin Quick Delete Action */}
       {isAdmin && onDelete && (
         <button

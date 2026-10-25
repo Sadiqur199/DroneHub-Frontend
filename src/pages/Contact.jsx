@@ -27,7 +27,7 @@ export const Contact = () => {
   return (
     <div
       className="w-full min-h-screen py-10 px-4 sm:px-8 text-slate-100 selection:bg-cyan-500 selection:text-white relative overflow-hidden"
-      style={{ backgroundColor: '#0F172A' }}
+      style={{ backgroundColor: '#05080F' }}
     >
       {/* Ambient glows */}
       <div className="absolute top-0 right-1/4 w-[400px] h-[300px] bg-blue-600/10 rounded-full blur-[130px] pointer-events-none" />

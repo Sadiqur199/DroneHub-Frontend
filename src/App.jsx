@@ -102,7 +102,7 @@ export const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#05080F] text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
       {/* Top Navbar */}
       <Navbar
         currentPage={currentPage}

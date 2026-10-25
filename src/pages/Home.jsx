@@ -53,7 +53,7 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
   };
 
   return (
-    <div className="w-full bg-[#0F172A] space-y-16 pb-20 text-slate-100">
+    <div className="w-full bg-[#05080F] space-y-16 pb-20 text-slate-100">
       {/* ========================================================= */}
       {/* DYNAMIC HERO SECTION: Admin Video / Image Background */}
       {/* ========================================================= */}
@@ -99,8 +99,8 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
         </div>
 
         {/* Soft Focused Scrim — High Video Visibility Across Right & Center */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A]/90 via-[#0F172A]/60 to-[#0F172A]/30 pointer-events-none"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-[#0F172A]/40 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#05080F]/90 via-[#05080F]/60 to-[#05080F]/30 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#05080F] via-transparent to-[#05080F]/40 pointer-events-none"></div>
 
         {/* Content Layer Over the Video */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 py-16 lg:py-24 w-full">

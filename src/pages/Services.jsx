@@ -118,7 +118,7 @@ export const Services = ({ onNavigate }) => {
   ];
 
   return (
-    <div className="w-full min-h-screen text-slate-100 selection:bg-cyan-500 selection:text-white" style={{ backgroundColor: '#0F172A' }}>
+    <div className="w-full min-h-screen text-slate-100 selection:bg-cyan-500 selection:text-white" style={{ backgroundColor: '#05080F' }}>
       
       {/* ========================================================= */}
       {/* HERO SECTION */}

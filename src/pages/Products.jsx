@@ -203,7 +203,7 @@ export const Products = ({
   };
 
   return (
-    <div className="w-full bg-[#0F172A] text-slate-100 min-h-screen py-8 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
+    <div className="w-full bg-[#05080F] text-slate-100 min-h-screen py-8 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
       
       {/* Top Header & Breadcrumb */}
       <div className="border-b border-slate-800 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4">

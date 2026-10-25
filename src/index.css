@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    background-color: #0F172A;
+    background-color: #05080F;
     color: #f1f5f9;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -12,7 +12,7 @@
   }
 }
 
-/* Subtle card surface for #0F172A dark theme */
+/* Subtle card surface for #05080F dark theme */
 .card-surface {
   background: rgba(30, 41, 59, 0.7);
   border: 1px solid rgba(51, 65, 85, 0.8);
@@ -29,16 +29,16 @@
 
 /* Premium section backgrounds */
 .section-gray { background-color: #1e293b; color: #f8fafc; }
-.section-dark { background-color: #0F172A; color: #ffffff; }
+.section-dark { background-color: #05080F; color: #ffffff; }
 
-/* Modern scrollbar - #0F172A dark theme */
+/* Modern scrollbar - #05080F dark theme */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0F172A; }
+::-webkit-scrollbar-track { background: #05080F; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
 
 /* Selection */
-::selection { background: #06b6d4; color: #0F172A; }
+::selection { background: #06b6d4; color: #05080F; }
 
 /* Smooth animations */
 @keyframes fadeInUp {

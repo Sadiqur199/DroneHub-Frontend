@@ -95,7 +95,7 @@ export const Auth = ({ onNavigate }) => {
   return (
     <div
       className="w-full min-h-[85vh] px-4 sm:px-8 py-16 flex flex-col items-center justify-center selection:bg-cyan-500 selection:text-white relative overflow-hidden"
-      style={{ backgroundColor: '#0F172A' }}
+      style={{ backgroundColor: '#05080F' }}
     >
       {/* Ambient glows */}
       <div className="absolute top-0 left-1/3 w-[400px] h-[300px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />

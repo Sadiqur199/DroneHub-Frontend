@@ -61,7 +61,7 @@ const SectionCard = ({ icon: Icon, title, children }) => (
 
 export const About = ({ onNavigate }) => {
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-[#05080F] text-slate-100 overflow-hidden">
 
       {/* HERO */}
       <section className="relative min-h-[72vh] flex items-center overflow-hidden">
@@ -71,8 +71,8 @@ export const About = ({ onNavigate }) => {
             alt="DJI Agras T100 spraying lychee orchard at dawn"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A] via-[#0F172A]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-[#0F172A]/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#05080F] via-[#05080F]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05080F] via-transparent to-[#05080F]/40" />
         </div>
         <div className="relative max-w-7xl mx-auto px-6 sm:px-10 py-24 w-full">
           <div className="max-w-2xl">
@@ -111,7 +111,7 @@ export const About = ({ onNavigate }) => {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0F172A] to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#05080F] to-transparent" />
       </section>
 
       {/* STATS STRIP */}
@@ -247,7 +247,7 @@ export const About = ({ onNavigate }) => {
                 className="w-full object-cover"
                 style={{ maxHeight: '420px' }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#05080F] via-transparent to-transparent" />
               <div className="absolute bottom-6 left-6 right-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
                 <div>
                   <p className="text-xs text-cyan-400 font-bold uppercase tracking-widest mb-1">Dual-Aircraft Operations</p>

@@ -127,7 +127,7 @@ export const Industries = ({ onNavigate }) => {
   const [active, setActive] = useState(null);
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100">
+    <div className="min-h-screen bg-[#05080F] text-slate-100">
 
       {/* HERO */}
       <section className="relative overflow-hidden">
@@ -137,8 +137,8 @@ export const Industries = ({ onNavigate }) => {
             alt="Drone operations across mining, agriculture, government and consulting industries"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A] via-[#0F172A]/85 to-[#0F172A]/60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-[#0F172A]/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#05080F] via-[#05080F]/85 to-[#05080F]/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05080F] via-transparent to-[#05080F]/50" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-6 sm:px-10 py-28">
@@ -183,7 +183,7 @@ export const Industries = ({ onNavigate }) => {
             ))}
           </div>
         </div>
-        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0F172A] to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#05080F] to-transparent" />
       </section>
 
       {/* INDUSTRY CARDS */}

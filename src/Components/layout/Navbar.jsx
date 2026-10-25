@@ -72,7 +72,7 @@ export const Navbar = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0F172A]/95 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-50 w-full bg-[#05080F]/95 backdrop-blur-md border-b border-slate-800">
       {/* Top Utility Bar */}
       <div className="border-b border-slate-800/80 text-xs text-slate-400 py-2 px-4 sm:px-8 bg-slate-950/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -221,7 +221,7 @@ export const Navbar = ({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0F172A] border-b border-slate-800 px-4 py-3 space-y-1 shadow-2xl backdrop-blur-xl">
+        <div className="lg:hidden bg-[#05080F] border-b border-slate-800 px-4 py-3 space-y-1 shadow-2xl backdrop-blur-xl">
           {navLinks.map((link) => (
             <button
               key={link.id}
