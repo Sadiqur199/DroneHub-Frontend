@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { settingsApi, productsApi } from '../services/api';
-import { COMPANY_INFO } from '../data/products';
+import { COMPANY_INFO, DRONES, COMBOS } from '../data/products';
 import { ProductCard } from '../Components/product/ProductCard';
 import { FleetHardwareMatrix } from '../Components/product/FleetHardwareMatrix';
 import { 
@@ -16,9 +16,9 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
     subtitle: 'Supplying heavy-lift agricultural spraying drones (DJI Agras T50), radiometric thermal survey platforms, and certified factory replacement parts. Serviced in our Mackay workshop with rapid deployment support across Brisbane, Sydney, and Gold Coast.',
   });
 
-  const [drones, setDrones] = useState([]);
-  const [combos, setCombos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [drones, setDrones] = useState(() => DRONES.slice(0, 4));
+  const [combos, setCombos] = useState(() => COMBOS.slice(0, 3));
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadHomeData();
@@ -78,7 +78,7 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
                 key={banner.media_url}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vh] min-w-[177.77vh] min-h-[56.25vw] object-cover opacity-85"
                 src={banner.media_url}
-                title="DroneHub Australia Fleet Video"
+                title="DroneHab Australia Fleet Video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 tabIndex="-1"
@@ -88,7 +88,7 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
             <img
               key={banner.media_url}
               src={banner.media_url}
-              alt="DroneHub Hero Banner"
+              alt="DroneHab Hero Banner"
               className="absolute inset-0 w-full h-full object-cover opacity-75 scale-105 transition-all duration-1000"
               onError={(e) => {
                 e.target.onerror = null;
@@ -355,7 +355,7 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
       </section>
 
       {/* ========================================================= */}
-      {/* WHY CHOOSE DRONEHUB AUSTRALIA (Trust & Compliance) */}
+      {/* WHY CHOOSE DRONEHAB AUSTRALIA (Trust & Compliance) */}
       {/* ========================================================= */}
       <section className="w-full px-4 sm:px-8 max-w-7xl mx-auto">
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 sm:p-12">
@@ -364,7 +364,7 @@ export const Home = ({ onNavigate, onSelectProduct, onAddToCart, onSelectCategor
               Australian Aviation Standards
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-white">
-              Why Australian Enterprises Rely on DroneHub
+              Why Australian Enterprises Rely on DroneHab
             </h2>
             <p className="text-sm text-slate-400">
               Comprehensive support for mining, agriculture, infrastructure inspection, and emergency services.

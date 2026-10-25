@@ -55,7 +55,7 @@ export const Tutorials = ({ onNavigate }) => {
           <div className="relative z-10 max-w-3xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-xs font-semibold">
               <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-              <span>DroneHub Flight Academy &amp; Technical Workshop</span>
+              <span>DroneHab Flight Academy &amp; Technical Workshop</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight text-white">
               Commercial Drone Tutorials &amp; Operational Guides
@@ -165,7 +165,7 @@ export const Tutorials = ({ onNavigate }) => {
                       {item.title}
                     </h3>
                     <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                      {item.description || 'Comprehensive step-by-step guide provided by certified DroneHub technicians.'}
+                      {item.description || 'Comprehensive step-by-step guide provided by certified DroneHab technicians.'}
                     </p>
                   </div>
                 </div>

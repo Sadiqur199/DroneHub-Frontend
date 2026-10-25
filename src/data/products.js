@@ -1,8 +1,8 @@
 export const COMPANY_INFO = {
-  name: 'DroneHub Australia',
+  name: 'DroneHab Australia',
   abn: '48 612 908 124',
   phone: '1300 544 968',
-  email: 'enquiries@dronehub.com.au',
+  email: 'enquiries@dronehab.com.au',
   base: 'Mackay, Queensland',
   address: 'Cnr Gordon & Gregory Streets, Mackay QLD 4740',
   crews: ['Mackay (HQ)', 'Brisbane', 'Gold Coast', 'Sydney'],
@@ -847,7 +847,7 @@ export const COMBOS = [
     id: 'combo-bowen-basin-mining',
     name: 'Bowen Basin Coal Mine Autonomous RTK Survey Combo',
     sku: 'DH-BBN-RTK-BNDL',
-    brand: 'DroneHub Engineered',
+    brand: 'DroneHab Engineered',
     category: 'combos',
     price_cents: 3499000, // $34,990.00 AUD
     stock_qty: 3,

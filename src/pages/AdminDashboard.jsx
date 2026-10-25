@@ -373,7 +373,7 @@ export const AdminDashboard = ({ onNavigate }) => {
             </div>
             <div>
               <span className="font-bold tracking-tight text-white block text-sm leading-tight group-hover:text-blue-400 transition-colors">
-                DroneHub Australia
+                DroneHab Australia
               </span>
               <span className="text-[10px] text-slate-400 block font-mono">Central Command • Mackay Hub</span>
             </div>
@@ -1006,7 +1006,7 @@ export const AdminDashboard = ({ onNavigate }) => {
 
           {activeSection === 'settings' && (
             <div className="bg-white p-8 rounded-2xl border border-gray-200 space-y-4">
-              <h3 className="text-base font-bold text-gray-900">DroneHub Store & Tax Configuration</h3>
+              <h3 className="text-base font-bold text-gray-900">DroneHab Store & Tax Configuration</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
                   <span className="text-gray-400 block mb-0.5">Registered ABN</span>

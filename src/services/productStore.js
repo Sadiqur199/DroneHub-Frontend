@@ -1,8 +1,43 @@
 import * as XLSX from 'xlsx';
 import { productsApi, categoriesApi, session } from './api';
+import { getAllProducts } from '../data/products';
 
 const EVENT_NAME = 'dh-products-updated';
 const CATEGORIES_EVENT = 'dh-categories-updated';
+
+export const DEFAULT_CATEGORIES = [
+  { id: 1, name: 'Commercial Drones', slug: 'drones', type: 'drone' },
+  { id: 2, name: 'Accessories & Payloads', slug: 'accessories', type: 'accessory' },
+  { id: 3, name: 'Genuine Spare Parts', slug: 'parts', type: 'part' },
+  { id: 4, name: 'Turnkey Combos', slug: 'combos', type: 'combo' },
+];
+
+export const getFallbackProducts = () => {
+  try {
+    const local = getAllProducts();
+    const droneMap = {};
+    local.filter((p) => p.category === 'drones').forEach((d) => {
+      droneMap[d.id] = d.name;
+    });
+
+    return local.map((p) => {
+      const normalPrice = p.price_cents || 0;
+      return {
+        ...p,
+        subcategory: p.subcategory || p.part_section || p.series_name || (p.category === 'drones' ? 'Enterprise Airframe' : 'General'),
+        drone_name: p.drone_id ? (droneMap[p.drone_id] || null) : null,
+        role_prices: {
+          normal: normalPrice,
+          wholesale: Math.round(normalPrice * 0.88),
+          agent: Math.round(normalPrice * 0.80),
+        },
+        visibility_roles: p.visibility_roles || ['normal', 'wholesale', 'agent'],
+      };
+    });
+  } catch (e) {
+    return [];
+  }
+};
 
 // ─────────────────────────────────────────────
 // Standard Drone Component Sections (for Parts)
@@ -42,7 +77,7 @@ const emit = (type, detail) => {
 // Dynamic Category Store (server backed)
 // ─────────────────────────────────────────────
 export const categoryStore = {
-  cache: [],
+  cache: [...DEFAULT_CATEGORIES],
   inflight: null,
 
   async getAll() {
@@ -51,8 +86,18 @@ export const categoryStore = {
     }
 
     const request = (async () => {
-      const res = await categoriesApi.getAll();
-      categoryStore.cache = res?.data || [];
+      try {
+        const res = await categoriesApi.getAll();
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          categoryStore.cache = res.data;
+        } else if (!categoryStore.cache || categoryStore.cache.length === 0) {
+          categoryStore.cache = [...DEFAULT_CATEGORIES];
+        }
+      } catch (err) {
+        if (!categoryStore.cache || categoryStore.cache.length === 0) {
+          categoryStore.cache = [...DEFAULT_CATEGORIES];
+        }
+      }
       emit(CATEGORIES_EVENT, categoryStore.cache);
       return categoryStore.cache;
     })();
@@ -115,7 +160,7 @@ export const categoryStore = {
 // Central Product Store (server backed)
 // ─────────────────────────────────────────────
 export const productStore = {
-  cache: [],
+  cache: getFallbackProducts(),
   lastError: null,
   inflight: null,
 
@@ -133,13 +178,21 @@ export const productStore = {
     const request = (async () => {
       try {
         const res = await productsApi.getAll(params);
-        productStore.cache = res?.data || [];
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          productStore.cache = res.data;
+        } else if (!productStore.cache || productStore.cache.length === 0) {
+          productStore.cache = getFallbackProducts();
+        }
         productStore.lastError = null;
         emit(EVENT_NAME, productStore.cache);
         return productStore.cache;
       } catch (err) {
         productStore.lastError = err.message;
-        throw err;
+        if (!productStore.cache || productStore.cache.length === 0) {
+          productStore.cache = getFallbackProducts();
+        }
+        emit(EVENT_NAME, productStore.cache);
+        return productStore.cache;
       } finally {
         productStore.inflight = null;
       }
@@ -437,7 +490,7 @@ export const productStore = {
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, category.toUpperCase());
-    XLSX.writeFile(workbook, `DroneHub_${category.toUpperCase()}_Demo_Template.xlsx`);
+    XLSX.writeFile(workbook, `DroneHab_${category.toUpperCase()}_Demo_Template.xlsx`);
   },
 
   // ─────────────────────────────────────────────
@@ -538,3 +591,11 @@ export const productStore = {
     });
   },
 };
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('dh-auth-changed', () => {
+    productStore.inflight = null;
+    productStore.getAll().catch(() => {});
+  });
+}
+

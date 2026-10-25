@@ -88,7 +88,7 @@ export const About = ({ onNavigate }) => {
             <h1 className="text-5xl sm:text-6xl font-black text-white leading-tight mb-6 animate-fadeInUp">
               About{' '}
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                Dronehab
+                DroneHab
               </span>
             </h1>
             <p className="text-lg text-slate-300 leading-relaxed mb-8 max-w-xl animate-fadeInUp">
@@ -180,7 +180,7 @@ export const About = ({ onNavigate }) => {
                 <div className="absolute -inset-4 bg-gradient-to-tr from-cyan-500/10 to-blue-500/5 rounded-3xl blur-xl" />
                 <img
                   src="/about_pilot.jpg"
-                  alt="Dronehab pilot in command during field operations"
+                  alt="DroneHab pilot in command during field operations"
                   className="relative rounded-2xl w-full object-cover shadow-2xl shadow-black/50 border border-slate-700/50"
                   style={{ maxHeight: '460px' }}
                 />

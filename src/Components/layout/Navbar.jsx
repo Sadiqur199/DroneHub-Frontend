@@ -110,7 +110,7 @@ export const Navbar = ({
             </div>
             <div>
               <span className="text-lg font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
-                DroneHub
+                DroneHab
               </span>
               <span className="text-[10px] font-bold text-cyan-400 ml-1.5 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded">
                 AUSTRALIA

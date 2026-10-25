@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatAud, calculateGst, DRONES, getAllProducts } from '../data/products';
 import { ProductCard } from '../Components/product/ProductCard';
+import { session } from '../services/api';
 import { 
   ArrowLeft, ShoppingBag, Truck, ShieldCheck, Award, CheckCircle2, 
   Plus, Minus, Check, ChevronRight, FileText, Layers, Wrench, Battery 
@@ -13,7 +14,31 @@ export const ProductDetail = ({ product, onNavigate, onAddToCart, onSelectProduc
   const [activeTab, setActiveTab] = useState('description');
   const [addedToast, setAddedToast] = useState(false);
 
-  const gstCents = calculateGst(product.price_cents * quantity);
+  const userRole = session.isLoggedIn() ? session.getRole() : 'normal';
+  let unitPriceCents = product.price_cents || 0;
+  let priceLabel = 'Australian Retail Price (AUD)';
+
+  if (userRole === 'wholesale') {
+    if (product.role_prices?.wholesale) {
+      unitPriceCents = product.role_prices.wholesale;
+    } else if (product.price_cents) {
+      unitPriceCents = Math.round(product.price_cents * 0.88);
+    }
+    priceLabel = 'Approved Wholesale Partner Price (AUD)';
+  } else if (userRole === 'agent') {
+    if (product.role_prices?.agent) {
+      unitPriceCents = product.role_prices.agent;
+    } else if (product.price_cents) {
+      unitPriceCents = Math.round(product.price_cents * 0.80);
+    }
+    priceLabel = 'Authorized Service Agent Price (AUD)';
+  } else if (userRole === 'normal') {
+    if (product.role_prices?.normal != null) {
+      unitPriceCents = product.role_prices.normal;
+    }
+  }
+
+  const gstCents = calculateGst(unitPriceCents * quantity);
 
   // Find related products
   const allProducts = getAllProducts();
@@ -29,7 +54,7 @@ export const ProductDetail = ({ product, onNavigate, onAddToCart, onSelectProduc
   }
 
   const handleAdd = () => {
-    onAddToCart({ ...product, qty: quantity });
+    onAddToCart({ ...product, price_cents: unitPriceCents, qty: quantity });
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2500);
   };
@@ -116,11 +141,18 @@ export const ProductDetail = ({ product, onNavigate, onAddToCart, onSelectProduc
 
           {/* Pricing Box */}
           <div className="p-6 rounded-2xl space-y-2 border border-slate-700/60 bg-slate-800/60 backdrop-blur-xs">
-            <div className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
-              Australian Retail Price (AUD)
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                {priceLabel}
+              </span>
+              {userRole !== 'normal' && (
+                <span className="font-semibold text-cyan-400 font-mono text-[10px] bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">
+                  {userRole === 'wholesale' ? 'Wholesale Partner Tier' : 'Service Agent Tier'}
+                </span>
+              )}
             </div>
-            <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              {formatAud(product.price_cents * quantity)}
+            <div className="text-3xl sm:text-4xl font-black text-white tracking-tight font-mono">
+              {formatAud(unitPriceCents * quantity)}
             </div>
             <div className="text-xs text-slate-300 font-mono flex items-center justify-between border-t border-slate-700/60 pt-2">
               <span>Includes 10% Australian GST:</span>

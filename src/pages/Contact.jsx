@@ -40,7 +40,7 @@ export const Contact = () => {
             Australian Technical Support &amp; Dispatch
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            Contact DroneHub Australia
+            Contact DroneHab Australia
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
             Based in Mackay, Queensland with commercial rapid-response crews in Mackay, Brisbane, Gold Coast, and Sydney. Serving Bowen Basin mining operations and national industrial clients.

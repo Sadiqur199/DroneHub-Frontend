@@ -1,5 +1,5 @@
 // =========================================================
-// DroneHub Australia — Admin Dashboard Demo Data
+// DroneHab Australia — Admin Dashboard Demo Data
 // All data is mock/demo for client presentation purposes
 // =========================================================
 

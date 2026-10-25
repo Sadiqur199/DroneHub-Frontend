@@ -37,7 +37,7 @@ export const CustomerDashboard = ({ onNavigate }) => {
       setError(
         err.status === 401
           ? 'Your session has expired. Please sign in again.'
-          : 'Could not reach the DroneHub server. Please try again shortly.'
+          : 'Could not reach the DroneHab server. Please try again shortly.'
       );
     } finally {
       setLoading(false);

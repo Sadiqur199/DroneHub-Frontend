@@ -1,4 +1,4 @@
-// DroneHub Australia — Centralized API Client
+// DroneHab Australia — Centralized API Client
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
 
 const getHeaders = (isFormData = false) => {
@@ -57,14 +57,22 @@ export const session = {
     return !!user?.is_admin;
   },
   /** Storefront role: 'normal' | 'wholesale' | 'agent' */
-  getRole: () => session.getUser()?.role || 'normal',
+  getRole: () => {
+    const user = session.getUser();
+    if (!user) return 'normal';
+    if (user.role === 'wholesale' || user.is_wholesale || user.group_slug === 'wholesale') return 'wholesale';
+    if (user.role === 'agent' || user.is_agent || user.group_slug === 'agent') return 'agent';
+    return 'normal';
+  },
   save: (token, user) => {
     localStorage.setItem('dh_token', token);
     localStorage.setItem('dh_user', JSON.stringify(user));
+    window.dispatchEvent(new CustomEvent('dh-auth-changed', { detail: { token, user } }));
   },
   clear: () => {
     localStorage.removeItem('dh_token');
     localStorage.removeItem('dh_user');
+    window.dispatchEvent(new CustomEvent('dh-auth-changed', { detail: { token: null, user: null } }));
   },
 };
 

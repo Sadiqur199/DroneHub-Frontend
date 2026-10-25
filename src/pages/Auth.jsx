@@ -54,7 +54,7 @@ export const Auth = ({ onNavigate }) => {
       setErrorMessage(
         err.status === 401
           ? 'Invalid email or password.'
-          : 'Could not reach the DroneHub server. Please try again shortly.'
+          : 'Could not reach the DroneHab server. Please try again shortly.'
       );
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export const Auth = ({ onNavigate }) => {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-xs font-semibold text-cyan-300">
             <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-            <span>DroneHub Australia Portal</span>
+            <span>DroneHab Australia Portal</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             {authMode === 'login' ? 'Sign In to Your Account' : 'Create New Customer Account'}
@@ -196,7 +196,7 @@ export const Auth = ({ onNavigate }) => {
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-cyan-600/20 hover:shadow-cyan-500/30"
               >
-                {loading ? 'Authenticating...' : 'Sign In to DroneHub'}
+                {loading ? 'Authenticating...' : 'Sign In to DroneHab'}
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>

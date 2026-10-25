@@ -18,7 +18,7 @@ export const Shop = ({
   onAddToCart,
   initialCategory = 'all'
 }) => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => productStore.getCached());
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,9 +40,15 @@ export const Shop = ({
     const load = async () => {
       try {
         const loaded = await productStore.getAll();
-        if (!cancelled) setProducts(loaded);
+        if (!cancelled && loaded && loaded.length > 0) {
+          setProducts(loaded);
+        } else if (!cancelled) {
+          setProducts(productStore.getCached());
+        }
       } catch (err) {
-        console.error('Failed to load catalogue:', err);
+        if (!cancelled) {
+          setProducts(productStore.getCached());
+        }
       }
     };
 
@@ -57,10 +63,25 @@ export const Shop = ({
     };
   }, []);
 
+  const getUserRole = () => {
+    if (!session.isLoggedIn()) return 'normal';
+    const role = session.getRole();
+    if (role === 'wholesale') return 'wholesale';
+    if (role === 'agent') return 'agent';
+    return 'normal';
+  };
+
   // Admin tools & the signed-in customer's tier come from the session.
   useEffect(() => {
-    setIsAdminMode(session.isAdmin());
-    setActiveUserRole(session.getRole());
+    const syncRole = () => {
+      setIsAdminMode(session.isAdmin());
+      setActiveUserRole(session.isAdmin() ? 'all' : getUserRole());
+    };
+
+    syncRole();
+
+    window.addEventListener('dh-auth-changed', syncRole);
+    return () => window.removeEventListener('dh-auth-changed', syncRole);
   }, []);
 
   // When category changes, reset subcategory and page to 1
@@ -128,21 +149,33 @@ export const Shop = ({
     return [{ id: 'all', label: 'All Subcategories', count: scoped.length }, ...list];
   }, [products, selectedCategory]);
 
-  const [activeUserRole, setActiveUserRole] = useState('all'); // 'all', 'normal', 'wholesale', 'agent'
+  const [activeUserRole, setActiveUserRole] = useState(() => {
+    return session.isAdmin() ? 'all' : getUserRole();
+  });
 
   // The price a customer actually pays for a product.
   const effectivePriceFor = (p) => {
-    if (activeUserRole === 'wholesale' && p.role_prices?.wholesale) return p.role_prices.wholesale;
-    if (activeUserRole === 'agent' && p.role_prices?.agent) return p.role_prices.agent;
-    if (activeUserRole === 'normal' && p.role_prices?.normal != null) return p.role_prices.normal;
+    if (activeUserRole === 'wholesale') {
+      if (p.role_prices?.wholesale) return p.role_prices.wholesale;
+      return p.price_cents ? Math.round(p.price_cents * 0.88) : 0;
+    }
+    if (activeUserRole === 'agent') {
+      if (p.role_prices?.agent) return p.role_prices.agent;
+      return p.price_cents ? Math.round(p.price_cents * 0.80) : 0;
+    }
+    if (activeUserRole === 'normal') {
+      if (p.role_prices?.normal != null) return p.role_prices.normal;
+    }
     return p.price_cents || 0;
   };
 
   // Filtered & Sorted Products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      // 0. Role-based visibility filter
-      if (activeUserRole !== 'all') {
+      // 0. Role-based visibility filter:
+      // Retailer products are always shown to all users (logged in or guest).
+      // Only apply role filtering if admin is explicitly testing a tier in admin preview mode.
+      if (isAdminMode && activeUserRole !== 'all') {
         const roles = p.visibility_roles || ['normal', 'wholesale', 'agent'];
         if (!roles.includes(activeUserRole)) {
           return false;
@@ -248,7 +281,7 @@ export const Shop = ({
                 <span>Australia's Official Enterprise Drone Store</span>
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
-                DroneHub Hardware & Spares Shop
+                DroneHab Hardware & Spares Shop
               </h1>
               <p className="text-sm sm:text-base text-slate-400 max-w-3xl mt-1">
                 Explore commercial spray airframes, mining RTK inspection platforms, authentic replacement parts, and high-energy batteries with Australia-wide dispatch.

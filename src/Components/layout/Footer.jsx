@@ -66,7 +66,7 @@ export const Footer = ({ onNavigate, onSelectCategory }) => {
                 DH
               </div>
               <span className="text-lg font-black text-white group-hover:text-cyan-300 transition-colors">
-                DroneHub <span className="text-cyan-400 text-xs font-semibold ml-1 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded">AUSTRALIA</span>
+                DroneHab <span className="text-cyan-400 text-xs font-semibold ml-1 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded">AUSTRALIA</span>
               </span>
             </div>
 

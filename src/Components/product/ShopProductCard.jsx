@@ -16,14 +16,24 @@ export const ShopProductCard = ({
   let basePriceCents = product.price_cents || 0;
   let roleLabel = 'Retail Price';
 
-  if (activeRole === 'wholesale' && product.role_prices?.wholesale) {
-    basePriceCents = product.role_prices.wholesale;
+  if (activeRole === 'wholesale') {
+    if (product.role_prices?.wholesale) {
+      basePriceCents = product.role_prices.wholesale;
+    } else if (product.price_cents) {
+      basePriceCents = Math.round(product.price_cents * 0.88);
+    }
     roleLabel = 'Wholesale (ABN) Price';
-  } else if (activeRole === 'agent' && product.role_prices?.agent) {
-    basePriceCents = product.role_prices.agent;
+  } else if (activeRole === 'agent') {
+    if (product.role_prices?.agent) {
+      basePriceCents = product.role_prices.agent;
+    } else if (product.price_cents) {
+      basePriceCents = Math.round(product.price_cents * 0.80);
+    }
     roleLabel = 'Service Agent Price';
-  } else if (activeRole === 'normal' && product.role_prices?.normal != null) {
-    basePriceCents = product.role_prices.normal;
+  } else if (activeRole === 'normal') {
+    if (product.role_prices?.normal != null) {
+      basePriceCents = product.role_prices.normal;
+    }
   }
 
   // The server already resolved this customer's price (including any active
@@ -98,7 +108,7 @@ export const ShopProductCard = ({
               No Image Provided
             </span>
             <span className="text-[10px] text-slate-700 font-mono mt-0.5">
-              {product.model_number || product.sku || 'Official DroneHub Item'}
+              {product.model_number || product.sku || 'Official DroneHab Item'}
             </span>
           </div>
         )}
@@ -106,7 +116,7 @@ export const ShopProductCard = ({
         {/* Top Badges */}
         <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10">
           <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-950/90 text-slate-300 border border-slate-800 shadow-sm backdrop-blur-md">
-            {product.brand || 'DroneHub'}
+            {product.brand || 'DroneHab'}
           </span>
           <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border backdrop-blur-md ${getCategoryColor(product.category)}`}>
             {product.category}
@@ -170,7 +180,7 @@ export const ShopProductCard = ({
 
           {/* Short Description */}
           <p className="text-xs text-slate-400 line-clamp-2 mt-2 leading-relaxed">
-            {product.short_description || product.full_description || product.description || 'Enterprise grade commercial drone hardware backed by DroneHub Australia priority workshop support.'}
+            {product.short_description || product.full_description || product.description || 'Enterprise grade commercial drone hardware backed by DroneHab Australia priority workshop support.'}
           </p>
 
           {/* Spec or Flight Time highlight */}
@@ -198,7 +208,7 @@ export const ShopProductCard = ({
 
             <div className="flex items-center justify-between text-[11px] text-slate-400 mt-0.5">
               <span>Includes 10% GST ({formatAud(gstCents)})</span>
-              {activeRole !== 'normal' && product.role_prices && (
+              {activeRole !== 'normal' && (
                 <span className="font-semibold text-cyan-400 font-mono text-[10px] bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/60">
                   {roleLabel}
                 </span>
@@ -208,7 +218,7 @@ export const ShopProductCard = ({
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
-              onClick={() => onSelect && onSelect(product)}
+              onClick={() => onSelect && onSelect({ ...product, price_cents: finalPriceCents })}
               className="py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-700/80"
             >
               <span>Details</span>
@@ -216,7 +226,7 @@ export const ShopProductCard = ({
             </button>
 
             <button
-              onClick={() => onAddToCart && onAddToCart(product)}
+              onClick={() => onAddToCart && onAddToCart({ ...product, price_cents: finalPriceCents })}
               disabled={(product.stock_qty || 0) <= 0}
               className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
                 (product.stock_qty || 0) > 0
