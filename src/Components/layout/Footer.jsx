@@ -61,13 +61,12 @@ export const Footer = ({ onNavigate, onSelectCategory }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Company Profile */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => onNavigate('home')}>
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-black text-sm">
-                DH
-              </div>
-              <span className="text-lg font-black text-white group-hover:text-cyan-300 transition-colors">
-                DroneHab <span className="text-cyan-400 text-xs font-semibold ml-1 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded">AUSTRALIA</span>
-              </span>
+            <div className="cursor-pointer select-none group" onClick={() => onNavigate('home')}>
+              <img
+                src="/dronehab-wordmark.png"
+                alt="DroneHab Australia"
+                className="h-12 w-auto transition-transform duration-300 group-hover:scale-[1.03]"
+              />
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">

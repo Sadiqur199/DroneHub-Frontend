@@ -104,18 +104,12 @@ export const Navbar = ({
       <nav className="border-b border-slate-800/60 shadow-lg shadow-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-6">
           {/* Logo */}
-          <div onClick={() => onNavigate('home')} className="flex items-center gap-2.5 cursor-pointer select-none shrink-0 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-              <span className="text-slate-950 font-black text-sm">DH</span>
-            </div>
-            <div>
-              <span className="text-lg font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
-                DroneHab
-              </span>
-              <span className="text-[10px] font-bold text-cyan-400 ml-1.5 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded">
-                AUSTRALIA
-              </span>
-            </div>
+          <div onClick={() => onNavigate('home')} className="flex items-center cursor-pointer select-none shrink-0 group">
+            <img
+              src="/dronehab-logo.png"
+              alt="DroneHab Australia"
+              className="h-9 sm:h-10 w-auto transition-transform duration-300 group-hover:scale-[1.03] drop-shadow-[0_0_14px_rgba(6,182,212,0.18)]"
+            />
           </div>
 
           {/* Desktop Nav Links */}
