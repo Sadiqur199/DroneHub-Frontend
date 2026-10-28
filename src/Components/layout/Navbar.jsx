@@ -103,12 +103,16 @@ export const Navbar = ({
       {/* Main Navigation */}
       <nav className="border-b border-slate-800/60 shadow-lg shadow-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-6">
-          {/* Logo */}
+          {/* Logo from index1.html */}
           <div onClick={() => onNavigate('home')} className="flex items-center cursor-pointer select-none shrink-0 group">
             <img
-              src="/dronehab-logo.png"
+              src="/img/logo.png"
               alt="DroneHab Australia"
-              className="h-9 sm:h-10 w-auto transition-transform duration-300 group-hover:scale-[1.03] drop-shadow-[0_0_14px_rgba(6,182,212,0.18)]"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/dronehab-logo.png';
+              }}
+              className="h-7 sm:h-8 w-auto transition-transform duration-300 group-hover:scale-[1.03]"
             />
           </div>
 

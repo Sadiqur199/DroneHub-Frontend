@@ -22,8 +22,10 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        cond: ['"Big Shoulders Display"', '"Barlow Condensed"', 'sans-serif'],
+        barlow: ['Barlow', 'sans-serif'],
+        sans: ['Barlow', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['Barlow', 'JetBrains Mono', 'monospace'],
       },
       boxShadow: {
         'card': '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
